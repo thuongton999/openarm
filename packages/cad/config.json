@@ -1,0 +1,26 @@
+{
+    "url": "https://cad.onshape.com/documents/ed7e8f56e8e86fc801280bc8/w/3524410636e59bebde6a8ce0/e/b69cef62fd195b6cdc087ebb",
+    "output_format": "urdf",
+    "output_filename": "robot",
+    "assets_directory": "assets",
+    "robot_name": "openarm",
+    
+    // CDN Processor Configuration
+    "cdn_enabled": true,
+    "cdn_output_dir": "processed",
+    "cdn_hash_length": 12,
+    "cdn_generate_manifest": true,
+    
+    // URDF-specific options
+    "joint_properties": {
+        "*": {
+            "max_effort": 10.0,
+            "max_velocity": 10.0
+        }
+    },
+    
+    // Custom processors
+    "processors": [
+        "processors.cdn_processor:CDNProcessor"
+    ]
+}

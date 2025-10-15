@@ -1,0 +1,2 @@
+"""CAD asset processing scripts"""
+

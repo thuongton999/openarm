@@ -1,0 +1,20 @@
+{
+  "name": "open-arm",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter webconnect dev",
+    "build": "bun --filter webconnect build",
+    "preview": "bun --filter webconnect preview",
+    "lint": "bun --filter webconnect lint",
+    "format": "bun --filter webconnect format",
+    "check": "bun --filter webconnect check",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

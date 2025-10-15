@@ -1,0 +1,40 @@
+# Python environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+*.env
+
+# Python-specific files
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE and editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS-generated
+.DS_Store
+Thumbs.db
+
+# Lock files
+*.lock
+
+# Coverage and test
+.coverage
+.tox/
+.pytest_cache/
+.nox/
+
+# Node.js
+node_modules
+bun.lockb

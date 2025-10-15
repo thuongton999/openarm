@@ -1,0 +1,13 @@
+[project]
+name = "ftc-robot"
+version = "0.1.0"
+description = "Science Lab FTC Team's robot development"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv.workspace]
+members = [
+    "packages/cad",
+    "apps/simulation",
+]

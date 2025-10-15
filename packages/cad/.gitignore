@@ -1,0 +1,19 @@
+.env
+.venv
+
+# Generated files
+robot.xml
+scene.xml
+*.urdf
+
+# Processed assets (uploaded to CDN)
+processed/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Original assets from Onshape (large files)
+assets/*.stl
+assets/*.part
