@@ -29,7 +29,7 @@ open_arm/
 │   └── cad/                 # CAD processing and CDN deployment
 ├── docs/
 │   └── paper.md            # Technical research paper
-└── .github/workflows/      # GitHub Actions for deployment
+└── .github/workflows/      # GitHub Actions (if needed)
 ```
 
 ### System Overview
@@ -161,19 +161,26 @@ VITE_CDN_PUBLIC_URL=https://assets.openarm.dev
 
 ## 🚀 Deployment
 
-### GitHub Pages (Automatic)
-The project includes GitHub Actions for automatic deployment:
+### Cloudflare Pages (Recommended)
+Deploy to Cloudflare Pages for global CDN delivery and automatic HTTPS:
 
-1. **Enable GitHub Pages** in repository settings
-2. **Push to main**: Any changes to `apps/webconnect/**` trigger deployment
-3. **Access**: Your app will be available at `https://yourusername.github.io/open_arm/`
+1. **Connect Repository** in [Cloudflare Pages](https://pages.cloudflare.com/)
+2. **Configure Build**: `bun run build` with output directory `.svelte-kit/cloudflare`
+3. **Set Environment Variables** for CDN URLs
+4. **Deploy**: Automatic deployments on git push
 
 ### Manual Deployment
 ```bash
 cd apps/webconnect
-bun run build
-# Deploy the 'build' folder to your hosting service
+
+# Deploy to production
+bun run deploy
+
+# Deploy to staging
+bun run deploy:staging
 ```
+
+See [WebConnect Deployment Guide](apps/webconnect/DEPLOYMENT.md) for detailed instructions.
 
 ## 🧪 Development
 

@@ -1,0 +1,16 @@
+name = "webconnect"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[env.production]
+name = "openarm-webconnect"
+
+# Environment variables (set these in Cloudflare Pages dashboard)
+# [env.production.vars]
+# VITE_CDN_MANIFEST_URL = "https://assets.openarm.dev/manifest.json"
+# VITE_CDN_PUBLIC_URL = "https://assets.openarm.dev"
+
+# [env.staging.vars]
+# VITE_CDN_MANIFEST_URL = "https://assets-staging.openarm.dev/manifest.json"
+# VITE_CDN_PUBLIC_URL = "https://assets-staging.openarm.dev"

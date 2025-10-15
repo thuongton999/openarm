@@ -1,0 +1,29 @@
+# Security headers
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Cache static assets
+/_app/immutable/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache CDN assets
+*.stl
+  Cache-Control: public, max-age=31536000, immutable
+
+*.urdf
+  Cache-Control: public, max-age=31536000, immutable
+
+manifest.json
+  Cache-Control: public, max-age=3600
+
+# No cache for HTML files
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Service worker cache
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate

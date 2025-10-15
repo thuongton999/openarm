@@ -163,6 +163,32 @@ PAYLOAD: [joint1_float32][joint2_float32][joint3_float32] (little-endian)
 LENGTH: 12 bytes
 ```
 
+## 🚀 Deployment
+
+### Cloudflare Pages (Recommended)
+Deploy to Cloudflare Pages for global CDN delivery and automatic HTTPS:
+
+1. **Connect Repository** in [Cloudflare Pages](https://pages.cloudflare.com/)
+2. **Configure Build**: `bun run build` with output directory `.svelte-kit/cloudflare`
+3. **Set Environment Variables** for CDN URLs
+4. **Deploy**: Automatic deployments on git push
+
+### Manual Deployment
+```bash
+cd apps/webconnect
+
+# Deploy to production
+bun run deploy
+
+# Deploy to staging
+bun run deploy:staging
+
+# Local development with Cloudflare Pages runtime
+bun run pages:dev
+```
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+
 ## Tech Stack
 
 - **SvelteKit 2.x** - Framework
