@@ -4,11 +4,8 @@ import { ConnectButton, JointSliders, RobotCanvas } from '$lib/ui';
 import {
 	Content,
 	Header,
-	HeaderGlobalAction,
-	HeaderUtilities,
 	Theme
 } from 'carbon-components-svelte';
-import { Information, SettingsAdjust } from 'carbon-icons-svelte';
 </script>
 
 <svelte:head>
@@ -17,10 +14,6 @@ import { Information, SettingsAdjust } from 'carbon-icons-svelte';
 
 <Theme theme={UI_CONFIG.theme}>
 	<Header company={APP_CONFIG.company} platformName={APP_CONFIG.name}>
-		<HeaderUtilities>
-			<HeaderGlobalAction aria-label="Settings" icon={SettingsAdjust} />
-			<HeaderGlobalAction aria-label="Information" icon={Information} />
-		</HeaderUtilities>
 	</Header>
 
 	<Content class="main-content">

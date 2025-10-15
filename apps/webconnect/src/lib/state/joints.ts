@@ -98,7 +98,24 @@ function createJointsStore() {
 		},
 
 		reset() {
-			set({ base: 0, arm1: 0, arm2: 0 });
+			const resetState = { base: 0, arm1: 0, arm2: 0 };
+			set(resetState);
+
+			// Update URDF model when resetting
+			const robotState = get(robot);
+			if (robotState.model && robotState.solver) {
+				try {
+					robotState.solver.setJointAngle('base', 0);
+					robotState.solver.setJointAngle('arm1', 0);
+					robotState.solver.setJointAngle('arm2', 0);
+				} catch (err) {
+					logger.error('Failed to reset robot joints', err);
+				}
+			}
+
+			// Send reset angles to serial
+			const angles: JointAngles = [0, 0, 0];
+			throttledSendAngles(angles);
 		},
 
 		updateLimits(newLimits: Partial<JointLimitState>) {

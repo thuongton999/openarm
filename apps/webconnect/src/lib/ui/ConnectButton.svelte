@@ -88,7 +88,6 @@ function getButtonKind(): 'primary' | 'danger' | 'tertiary' {
 	.connect-section {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
 	}
 
 	.pulse {
