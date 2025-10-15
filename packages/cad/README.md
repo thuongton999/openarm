@@ -99,7 +99,7 @@ cp env.example .env
 # - R2_* variables (get from Cloudflare dashboard)
 ```
 
-See [ENVIRONMENT_SETUP.md](../../ENVIRONMENT_SETUP.md) for detailed credential setup.
+See [env.example](env.example) for detailed credential setup.
 
 ### 3. Configure Robot Export
 

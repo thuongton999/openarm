@@ -3,6 +3,8 @@ import favicon from '@lib/assets/favicon.svg';
 import 'carbon-components-svelte/css/all.css';
 
 let { children } = $props();
+
+export const prerender = true;
 </script>
 
 <svelte:head>
