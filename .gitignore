@@ -21,6 +21,7 @@ build/
 .vscode/
 .idea/
 *.code-workspace
+.cursor/
 
 # OS-generated
 .DS_Store

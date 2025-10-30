@@ -1,6 +1,5 @@
 import { logger } from '$lib/core';
-import { type JointAngles, type Packet, encodeAngles } from '$lib/protocol';
-import { SerialPortManager, SerialReader, SerialWriter } from '$lib/serial';
+import { ProtoClient, Message, Status } from '$lib/proto';
 import { derived, writable } from 'svelte/store';
 
 export enum ConnectionStatus {
@@ -13,23 +12,35 @@ export enum ConnectionStatus {
 interface ConnectionState {
 	status: ConnectionStatus;
 	error: string | null;
-	lastPacketTime: number | null;
+	lastMessageTime: number | null;
 }
 
 function createConnectionStore() {
 	const { subscribe, set, update } = writable<ConnectionState>({
 		status: ConnectionStatus.DISCONNECTED,
 		error: null,
-		lastPacketTime: null
+		lastMessageTime: null
 	});
 
-	let portManager: SerialPortManager | null = null;
-	let reader: SerialReader | null = null;
-	let writer: SerialWriter | null = null;
+	let port: SerialPort | null = null;
+	let protoClient: ProtoClient | null = null;
 
-	const handlePacket = (packet: Packet) => {
-		logger.debug('Received packet', packet);
-		update((state) => ({ ...state, lastPacketTime: Date.now() }));
+	const handleMessage = (message: Message) => {
+		logger.debug('Received message', message);
+		update((state) => ({ ...state, lastMessageTime: Date.now() }));
+
+		// Handle different message types
+		switch (message.payload.case) {
+			case 'ack':
+				const ack = message.payload.value;
+				logger.info('Received ack', { seqAck: ack.seqAck, status: ack.status, message: ack.message });
+				break;
+			case 'heartbeat':
+				logger.debug('Received heartbeat');
+				break;
+			default:
+				logger.warn('Received unknown message type', message.payload.case);
+		}
 	};
 
 	const handleError = (error: Error) => {
@@ -44,17 +55,14 @@ function createConnectionStore() {
 			try {
 				update((state) => ({ ...state, status: ConnectionStatus.CONNECTING, error: null }));
 
-				portManager = new SerialPortManager();
-				await portManager.requestPort();
-				await portManager.open();
+				// Request serial port
+				port = await navigator.serial.requestPort();
+				await port.open({ baudRate: 115200 });
 
-				const readerStream = portManager.getReader();
-				const writerStream = portManager.getWriter();
+				protoClient = new ProtoClient();
 
-				reader = new SerialReader(readerStream, handlePacket, handleError);
-				writer = new SerialWriter(writerStream, 50);
-
-				reader.start();
+				// Start reading loop
+				this.startReading();
 
 				update((state) => ({ ...state, status: ConnectionStatus.CONNECTED }));
 				logger.info('Connected to serial port');
@@ -69,44 +77,109 @@ function createConnectionStore() {
 			}
 		},
 
+		startReading() {
+			if (!port || !protoClient) return;
+
+			const readLoop = async () => {
+				try {
+					const reader = port.readable?.getReader();
+					if (!reader) return;
+
+					const buffer: Uint8Array[] = [];
+					let bufferSize = 0;
+
+					while (true) {
+						const { value, done } = await reader.read();
+						if (done) break;
+
+						buffer.push(value);
+						bufferSize += value.length;
+
+						// Try to decode messages from accumulated buffer
+						let offset = 0;
+						while (offset < bufferSize) {
+							try {
+								// Find message boundary (protobuf varint length prefix)
+								const view = new Uint8Array(bufferSize);
+								let viewOffset = 0;
+
+								// Copy all buffer chunks into a single view
+								for (const chunk of buffer) {
+									view.set(chunk, viewOffset);
+									viewOffset += chunk.length;
+								}
+
+								const message = protoClient.decodeDelimited(view.slice(offset));
+								handleMessage(message);
+
+								// Skip the consumed bytes
+								const consumed = protoClient.encodeMessage(message).length;
+								offset += consumed;
+
+								// Clean up consumed chunks
+								while (buffer.length > 0 && offset >= buffer[0].length) {
+									offset -= buffer[0].length;
+									buffer.shift();
+								}
+								bufferSize -= consumed;
+
+							} catch (err) {
+								// Not enough data for a complete message, wait for more
+								break;
+							}
+						}
+					}
+
+					reader.releaseLock();
+				} catch (err) {
+					handleError(err instanceof Error ? err : new Error(String(err)));
+				}
+			};
+
+			readLoop();
+		},
+
 		async disconnect() {
 			try {
-				if (reader) {
-					reader.stop();
-					reader = null;
+				if (port) {
+					await port.close();
+					port = null;
 				}
 
-				if (writer) {
-					writer.clearQueue();
-					writer = null;
-				}
+				protoClient = null;
 
-				if (portManager) {
-					await portManager.close();
-					portManager = null;
-				}
-
-				set({ status: ConnectionStatus.DISCONNECTED, error: null, lastPacketTime: null });
+				set({ status: ConnectionStatus.DISCONNECTED, error: null, lastMessageTime: null });
 				logger.info('Disconnected from serial port');
 			} catch (err) {
 				logger.error('Disconnect error', err);
 			}
 		},
 
-		async sendAngles(angles: JointAngles) {
-			if (!writer) {
+		async sendAngles(angles: { baseRad: number; shoulderRad: number; elbowRad: number }) {
+			if (!port || !protoClient) {
 				logger.warn('Cannot send angles: not connected');
 				return;
 			}
 
 			try {
-				const packet = encodeAngles(angles);
-				await writer.write(packet);
+				const message = protoClient.createSetJointAngles(angles);
+				await protoClient.validateMessage(message);
+
+				const writer = port.writable?.getWriter();
+				if (!writer) {
+					throw new Error('Failed to get writer');
+				}
+
+				const bytes = protoClient.encodeMessage(message);
+				await writer.write(bytes);
+				writer.releaseLock();
+
+				logger.debug('Sent joint angles', angles);
 			} catch (err) {
 				logger.error('Failed to send angles', err);
 				handleError(err instanceof Error ? err : new Error(String(err)));
 			}
-		}
+		},
 	};
 }
 

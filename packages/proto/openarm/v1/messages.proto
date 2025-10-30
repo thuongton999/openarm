@@ -1,0 +1,35 @@
+syntax = "proto3";
+package openarm.v1;
+
+message Message { // transport-agnostic envelope
+  uint32 seq = 1;                 // monotonic sequence
+  uint64 timestamp_ms = 2;        // unix ms (optional)
+  oneof payload {                 // extensible
+    Heartbeat heartbeat = 10;
+    SetJointAngles set_joint_angles = 11;
+    Ack ack = 12;
+  }
+}
+
+message Heartbeat {}
+
+enum Status {
+  STATUS_OK = 0;
+  STATUS_INVALID = 1;
+  STATUS_OUT_OF_RANGE = 2;
+  STATUS_TIMEOUT = 3;
+  STATUS_I2C_ERROR = 4;
+  STATUS_EMERGENCY_STOP = 5;
+}
+
+message Ack {
+  uint32 seq_ack = 1;
+  Status status = 2;
+  string message = 3;
+}
+
+message SetJointAngles {
+  float base_rad = 1;
+  float shoulder_rad = 2;
+  float elbow_rad = 3;
+}

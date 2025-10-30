@@ -1,0 +1,8 @@
+{
+  "name": "@openarm/proto-c",
+  "version": "0.1.0",
+  "description": "Generated C protobuf code for OpenArm firmware",
+  "private": true,
+  "main": "index.h",
+  "types": "index.d.ts"
+}

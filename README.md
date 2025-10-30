@@ -275,9 +275,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🔗 Links
 
-- **Live Demo**: [GitHub Pages](https://yourusername.github.io/open_arm/)
-- **CAD Assets**: [CDN](https://assets.openarm.dev/)
-- **Documentation**: [Wiki](https://github.com/yourusername/open_arm/wiki)
+- **Live Demo**: [Cloudflare Pages](https://openarm.pages.dev/)
+- **CAD Assets**: [Onshape](https://cad.onshape.com/documents/ed7e8f56e8e86fc801280bc8/w/3524410636e59bebde6a8ce0/e/b69cef62fd195b6cdc087ebb)
+- **Documentation**: [Wiki](https://github.com/thuongton999/open_arm/wiki)
 
 ---
 

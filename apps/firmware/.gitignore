@@ -1,0 +1,47 @@
+# Build outputs
+MDK-ARM/DebugConfig/
+MDK-ARM/RTE/
+MDK-ARM/*.uvguix.*
+MDK-ARM/*.uvoptx
+MDK-ARM/Objects/
+MDK-ARM/Listings/
+*.o
+*.d
+*.axf
+*.htm
+*.lnp
+*.map
+*.lst
+*.hex
+*.bin
+*.elf
+*.dep
+*.sct
+
+# IDE specific files
+.vscode/
+.settings/
+.project
+.cproject
+*.launch
+
+# STM32CubeMX generated files
+.mxproject
+*.ioc.bak
+
+# User-specific files
+*.user
+*.suo
+*.sln.docstates
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
+*.log

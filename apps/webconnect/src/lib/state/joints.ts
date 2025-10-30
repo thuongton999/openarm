@@ -1,6 +1,5 @@
 import { ROBOT_CONFIG } from '$lib/config';
 import { logger } from '$lib/core';
-import type { JointAngles } from '$lib/protocol';
 import { clamp, throttle, debounce } from '$lib/utils';
 import { derived, get, writable } from 'svelte/store';
 import { connection } from './connection';
@@ -32,8 +31,8 @@ function createJointsStore() {
 	// Throttle serial communication to prevent overwhelming the STM32
 	let lastSerialSend = 0;
 	const SERIAL_THROTTLE_MS = 10; // 100Hz max serial update rate
-	
-	const throttledSendAngles = (angles: JointAngles) => {
+
+	const throttledSendAngles = (angles: { baseRad: number; shoulderRad: number; elbowRad: number }) => {
 		const now = Date.now();
 		if (now - lastSerialSend >= SERIAL_THROTTLE_MS) {
 			lastSerialSend = now;
@@ -66,7 +65,7 @@ function createJointsStore() {
 				}
 
 				// Send to serial with throttling to prevent overwhelming STM32
-				const angles: JointAngles = [newState.base, newState.arm1, newState.arm2];
+				const angles = { baseRad: newState.base, shoulderRad: newState.arm1, elbowRad: newState.arm2 };
 				throttledSendAngles(angles);
 
 				return newState;
@@ -90,8 +89,8 @@ function createJointsStore() {
 				}
 
 				// Send to serial with throttling
-				const jointAngles: JointAngles = [newState.base, newState.arm1, newState.arm2];
-				throttledSendAngles(jointAngles);
+				const angles = { baseRad: newState.base, shoulderRad: newState.arm1, elbowRad: newState.arm2 };
+				throttledSendAngles(angles);
 
 				return newState;
 			});
@@ -114,7 +113,7 @@ function createJointsStore() {
 			}
 
 			// Send reset angles to serial
-			const angles: JointAngles = [0, 0, 0];
+			const angles = { baseRad: 0, shoulderRad: 0, elbowRad: 0 };
 			throttledSendAngles(angles);
 		},
 
@@ -127,5 +126,5 @@ function createJointsStore() {
 export const joints = createJointsStore();
 
 export const jointAngles = derived(joints, ($joints) => {
-	return [$joints.base, $joints.arm1, $joints.arm2] as JointAngles;
+	return { baseRad: $joints.base, shoulderRad: $joints.arm1, elbowRad: $joints.arm2 };
 });

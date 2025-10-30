@@ -1,0 +1,11 @@
+{
+  "name": "@openarm/proto-es",
+  "version": "0.1.0",
+  "description": "Generated TypeScript protobuf code for OpenArm web applications",
+  "private": true,
+  "main": "index.js",
+  "types": "index.d.ts",
+  "peerDependencies": {
+    "@bufbuild/protobuf": "^2.2.0"
+  }
+}
