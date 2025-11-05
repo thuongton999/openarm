@@ -242,7 +242,7 @@ uv run python scripts/upload_to_cdn.py      # Upload to CDN
 
 ## 📚 Documentation
 
-- [Technical Paper](docs/paper.md) - Research and methodology
+- [Technical Report](docs/report.md) - Technical report
 - [CAD Processing](packages/cad/README.md) - Asset processing pipeline
 - [WebConnect](apps/webconnect/README.md) - Web application details
 

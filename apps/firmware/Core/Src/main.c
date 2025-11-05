@@ -26,7 +26,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "pca9685.h"
+#include "protocol.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,6 +48,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+// PCA9685 handle for servo control
+PCA9685_HandleTypeDef hpca9685;
 
 /* USER CODE END PV */
 
@@ -94,6 +98,19 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  
+  // Initialize PCA9685 PWM driver
+  if (PCA9685_Init(&hpca9685, &hi2c1, PCA9685_I2C_ADDRESS) != HAL_OK) {
+    // Initialization failed - enter error handler
+    Error_Handler();
+  }
+  
+  // Set all servos to center position initially
+  PCA9685_SetServoAngle(&hpca9685, 0, 90.0f);  // Base center
+  PCA9685_SetServoAngle(&hpca9685, 1, 90.0f);  // Shoulder center
+  PCA9685_SetServoAngle(&hpca9685, 2, 90.0f);  // Elbow center
+  
+  HAL_Delay(500); // Give servos time to reach position
 
   /* USER CODE END 2 */
 

@@ -22,7 +22,8 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "protocol.h"
+#include "cmsis_os.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,6 +96,15 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 
+// Circular buffer for USB data reception
+static uint8_t usb_rx_buffer[PROTOCOL_BUFFER_SIZE];
+static volatile uint16_t rx_write_idx = 0;
+static volatile uint16_t rx_read_idx = 0;
+
+// External references to FreeRTOS objects
+extern osMessageQueueId_t CommandQueueHandle;
+extern osMutexId_t RxBufferMutexHandle;
+
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -127,6 +137,21 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length);
 static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+
+/**
+ * @brief Get number of bytes available in circular buffer
+ */
+static uint16_t USB_GetAvailableBytes(void);
+
+/**
+ * @brief Read bytes from circular buffer
+ */
+static uint16_t USB_ReadBuffer(uint8_t *dest, uint16_t max_len);
+
+/**
+ * @brief Process received data and extract messages
+ */
+static void USB_ProcessReceivedData(void);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -259,6 +284,25 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  
+  // Copy received data to circular buffer
+  if (osMutexAcquire(RxBufferMutexHandle, 10) == osOK) {
+    for (uint32_t i = 0; i < *Len; i++) {
+      usb_rx_buffer[rx_write_idx] = Buf[i];
+      rx_write_idx = (rx_write_idx + 1) % PROTOCOL_BUFFER_SIZE;
+      
+      // Check for buffer overflow
+      if (rx_write_idx == rx_read_idx) {
+        // Buffer full, drop oldest data
+        rx_read_idx = (rx_read_idx + 1) % PROTOCOL_BUFFER_SIZE;
+      }
+    }
+    osMutexRelease(RxBufferMutexHandle);
+    
+    // Try to process received data
+    USB_ProcessReceivedData();
+  }
+  
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
@@ -291,6 +335,89 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+/**
+ * @brief Get number of bytes available in circular buffer
+ */
+static uint16_t USB_GetAvailableBytes(void)
+{
+    uint16_t write = rx_write_idx;
+    uint16_t read = rx_read_idx;
+    
+    if (write >= read) {
+        return write - read;
+    } else {
+        return PROTOCOL_BUFFER_SIZE - read + write;
+    }
+}
+
+/**
+ * @brief Read bytes from circular buffer
+ */
+static uint16_t USB_ReadBuffer(uint8_t *dest, uint16_t max_len)
+{
+    uint16_t bytes_read = 0;
+    
+    while (bytes_read < max_len && rx_read_idx != rx_write_idx) {
+        dest[bytes_read++] = usb_rx_buffer[rx_read_idx];
+        rx_read_idx = (rx_read_idx + 1) % PROTOCOL_BUFFER_SIZE;
+    }
+    
+    return bytes_read;
+}
+
+/**
+ * @brief Process received data and extract messages
+ * 
+ * This function looks for complete protobuf messages in the receive buffer.
+ * Protocol Buffers uses varint encoding, so we need to try decoding and
+ * check if we have a complete message.
+ */
+static void USB_ProcessReceivedData(void)
+{
+    static uint8_t temp_buffer[PROTOCOL_MAX_MESSAGE_SIZE];
+    openarm_v1_Message msg;
+    
+    if (osMutexAcquire(RxBufferMutexHandle, 10) != osOK) {
+        return;
+    }
+    
+    // Check if we have enough data to try decoding
+    uint16_t available = USB_GetAvailableBytes();
+    
+    if (available > 0) {
+        // Read available data (up to max message size)
+        uint16_t to_read = (available > PROTOCOL_MAX_MESSAGE_SIZE) ? PROTOCOL_MAX_MESSAGE_SIZE : available;
+        uint16_t bytes_read = USB_ReadBuffer(temp_buffer, to_read);
+        
+        // Try to decode the message
+        if (Protocol_DecodeMessage(temp_buffer, bytes_read, &msg)) {
+            // Successfully decoded a message
+            
+            // Check if it's a SetJointAngles command
+            if (msg.which_payload == openarm_v1_Message_set_joint_angles_tag) {
+                // Create robot command
+                RobotCommand_t cmd;
+                cmd.seq = msg.seq;
+                cmd.timestamp_ms = msg.timestamp_ms;
+                cmd.angles.base_rad = msg.payload.set_joint_angles.base_rad;
+                cmd.angles.shoulder_rad = msg.payload.set_joint_angles.shoulder_rad;
+                cmd.angles.elbow_rad = msg.payload.set_joint_angles.elbow_rad;
+                
+                // Validate and clamp angles
+                Protocol_ClampAngles(&cmd.angles);
+                
+                // Send to command queue (non-blocking)
+                osMessageQueuePut(CommandQueueHandle, &cmd, 0, 0);
+            }
+            // Handle other message types here (heartbeat, etc.)
+        }
+        // If decode fails, we might not have a complete message yet
+        // The data will be processed in the next call
+    }
+    
+    osMutexRelease(RxBufferMutexHandle);
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

@@ -25,7 +25,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "protocol.h"
+#include "pca9685.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,13 +53,6 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for TProtocolParser */
-osThreadId_t TProtocolParserHandle;
-const osThreadAttr_t TProtocolParser_attributes = {
-  .name = "TProtocolParser",
-  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for TServoControl */
@@ -102,7 +96,6 @@ const osSemaphoreAttr_t I2cSemaphore_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-void StartProtocolParser(void *argument);
 void StartServoControl(void *argument);
 void StartSafetyMonitor(void *argument);
 
@@ -172,7 +165,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of CommandQueue */
-  CommandQueueHandle = osMessageQueueNew (8, sizeof(uint16_t), &CommandQueue_attributes);
+  CommandQueueHandle = osMessageQueueNew (8, sizeof(RobotCommand_t), &CommandQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -181,9 +174,6 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
-  /* creation of TProtocolParser */
-  TProtocolParserHandle = osThreadNew(StartProtocolParser, NULL, &TProtocolParser_attributes);
 
   /* creation of TServoControl */
   TServoControlHandle = osThreadNew(StartServoControl, NULL, &TServoControl_attributes);
@@ -221,24 +211,6 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_StartProtocolParser */
-/**
-* @brief Function implementing the TProtocolParser thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartProtocolParser */
-__weak void StartProtocolParser(void *argument)
-{
-  /* USER CODE BEGIN StartProtocolParser */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartProtocolParser */
-}
-
 /* USER CODE BEGIN Header_StartServoControl */
 /**
 * @brief Function implementing the TServoControl thread.
@@ -249,10 +221,41 @@ __weak void StartProtocolParser(void *argument)
 __weak void StartServoControl(void *argument)
 {
   /* USER CODE BEGIN StartServoControl */
+  
+  extern I2C_HandleTypeDef hi2c1;
+  extern PCA9685_HandleTypeDef hpca9685;
+  
+  RobotCommand_t cmd;
+  osStatus_t status;
+  
+  // Wait for system to stabilize
+  osDelay(100);
+  
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    // Wait for command from queue (blocking with timeout)
+    status = osMessageQueueGet(CommandQueueHandle, &cmd, NULL, 100);
+    
+    if (status == osOK) {
+      // Acquire mutex for servo control
+      if (osMutexAcquire(ServoMutexHandle, 50) == osOK) {
+        
+        // Set servo angles
+        // Channel 0: Base
+        // Channel 1: Shoulder (arm1)
+        // Channel 2: Elbow (arm2)
+        
+        PCA9685_SetServoAngleRad(&hpca9685, 0, cmd.angles.base_rad);
+        PCA9685_SetServoAngleRad(&hpca9685, 1, cmd.angles.shoulder_rad);
+        PCA9685_SetServoAngleRad(&hpca9685, 2, cmd.angles.elbow_rad);
+        
+        osMutexRelease(ServoMutexHandle);
+      }
+    }
+    
+    // Small delay to prevent tight loop
+    osDelay(10);
   }
   /* USER CODE END StartServoControl */
 }
@@ -267,10 +270,36 @@ __weak void StartServoControl(void *argument)
 __weak void StartSafetyMonitor(void *argument)
 {
   /* USER CODE BEGIN StartSafetyMonitor */
+  
+  extern PCA9685_HandleTypeDef hpca9685;
+  
+  static uint32_t last_command_time = 0;
+  const uint32_t TIMEOUT_MS = 2000; // 2 second timeout
+  
+  // Wait for system to stabilize
+  osDelay(200);
+  
+  last_command_time = HAL_GetTick();
+  
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    uint32_t current_time = HAL_GetTick();
+    
+    // Check for command timeout
+    if ((current_time - last_command_time) > TIMEOUT_MS) {
+      // No commands received for too long - implement safety action
+      // For now, we just monitor. Could add emergency stop here.
+      // Example: PCA9685_AllOff(&hpca9685);
+    }
+    
+    // Update last command time if queue has items
+    if (osMessageQueueGetCount(CommandQueueHandle) > 0) {
+      last_command_time = current_time;
+    }
+    
+    // Check every 100ms
+    osDelay(100);
   }
   /* USER CODE END StartSafetyMonitor */
 }

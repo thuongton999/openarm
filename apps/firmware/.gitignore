@@ -17,6 +17,8 @@ MDK-ARM/Listings/
 *.elf
 *.dep
 *.sct
+*.scvd
+*.iex
 
 # IDE specific files
 .vscode/
