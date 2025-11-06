@@ -3,7 +3,7 @@
 ## 1. Tóm tắt ngắn gọn
 
 **Tên dự án:** Cánh tay robot 3 bậc tự do (3DOF) — điều khiển qua giao diện web tương tác.
-**Mục tiêu:** Xây dựng hệ thống cho phép người dùng điều khiển cánh tay robot 3DOF (base, arm1, arm2) bằng giao diện web 3D (Three.js + URDF loader). Tính toán động học (FK/IK) và giao diện chạy trên trình duyệt; lệnh điều khiển truyền tới **STM32F103C8T6** qua **WebUSB/USB OTG**, MCU chuyển tiếp lệnh tới module PWM (**PCA9685**) qua **I2C** để điều khiển servo vật lý. Hiện trạng: mô hình URDF & giao diện web đã hoàn thiện, cơ khí đã lắp đặt; **firmware STM32 chưa triển khai**.
+**Mục tiêu:** Xây dựng hệ thống cho phép người dùng điều khiển cánh tay robot 3DOF (base, arm1, arm2) bằng giao diện web 3D (Three.js + URDF loader). Tính toán động học (FK/IK) và giao diện chạy trên trình duyệt; lệnh điều khiển truyền tới **STM32F103C8T6** qua **WebUSB/USB CDC** sử dụng **Protocol Buffers (nanopb)**, MCU chuyển tiếp lệnh tới module PWM (**PCA9685**) qua **I2C** để điều khiển servo vật lý. Hiện trạng: mô hình URDF & giao diện web đã hoàn thiện, cơ khí đã lắp đặt; **firmware STM32 đã được triển khai với hỗ trợ Protocol Buffers**.
 
 ---
 
@@ -15,17 +15,19 @@ flowchart LR
     UI[Three.js Web UI<br/>(URDF Loader)]
     IK[Client-side FK / IK]
     WebUSB[WebUSB API]
+    PBEnc[Protocol Buffers<br/>Encoder]
   end
 
   PC[Máy tính / Host Browser]
 
-  STM[STM32F103C8T6<br/>(USB device)]
+  STM[STM32F103C8T6<br/>(USB CDC + nanopb)]
   I2CMod[PCA9685<br/>(PWM via I2C)]
   Servo[Servo motors<br/>(base, arm1, arm2)]
 
   UI --> IK
-  IK -->|angles (θ_base, θ_arm1, θ_arm2)| WebUSB
-  WebUSB -->|USB OTG / CDC or custom| STM
+  IK -->|angles (θ_base, θ_arm1, θ_arm2)| PBEnc
+  PBEnc -->|Protobuf message| WebUSB
+  WebUSB -->|USB CDC| STM
   STM -->|I2C (setPWM)| I2CMod
   I2CMod -->|PWM signals| Servo
 
@@ -47,8 +49,11 @@ sequenceDiagram
 
   User->>Browser: Chỉnh góc / chọn target (3D UI)
   Browser->>Browser: Tính IK -> joint angles
-  Browser->>STM32: Gửi packet lệnh qua WebUSB
-  STM32->>STM32: Parse packet, map angle -> PWM value
+  Browser->>Browser: Encode với Protocol Buffers
+  Browser->>STM32: Gửi protobuf message qua WebUSB/CDC
+  STM32->>STM32: Decode protobuf (nanopb)
+  STM32->>STM32: Validate & clamp angles
+  STM32->>STM32: Map angle -> PWM value
   STM32->>PCA9685: I2C write (setPWM channel)
   PCA9685->>Servo: PWM output
   Servo-->>User: Chuyển động vật lý (feedback: nếu có sensor)
@@ -78,12 +83,19 @@ sequenceDiagram
    * Servo: 3 servo cho base, arm1, arm2; nguồn tách riêng cho servo.
    * Placeholder: `[Hình: Sơ đồ đấu nối STM32 - PCA9685 - Servo]`.
 
-4. **Firmware (cần thực hiện)**
+4. **Firmware (đã triển khai)**
 
-   * Implement USB device (CDC/WebUSB compatible) để nhận packet từ trình duyệt.
-   * Implement I2C driver + hàm map angle -> PWM (servo calibration).
-   * Safety: giới hạn góc, timeout, emergency stop.
-   * Placeholder code block: `[Code: Khung firmware STM32 (USB receive -> I2C write)]`.
+   * ✅ Implement USB CDC device để nhận packet từ trình duyệt.
+   * ✅ Tích hợp Protocol Buffers (nanopb) để decode messages.
+   * ✅ Implement PCA9685 I2C driver + hàm map angle -> PWM (servo calibration).
+   * ✅ FreeRTOS tasks: Protocol Parser, Servo Control, Safety Monitor.
+   * ✅ Safety: giới hạn góc (angle clamping), timeout monitoring.
+   * Các file chính:
+     - `apps/firmware/Core/Src/pca9685.c` - PCA9685 PWM driver
+     - `apps/firmware/Core/Src/protocol.c` - Protocol Buffers handling
+     - `apps/firmware/USB_DEVICE/App/usbd_cdc_if.c` - USB CDC receive
+     - `apps/firmware/Core/Src/freertos.c` - RTOS tasks
+     - `apps/firmware/Core/Src/main.c` - Main initialization
 
 5. **Tích hợp & kiểm thử**
 
@@ -121,11 +133,57 @@ sequenceDiagram
 
 ## 6. Kế hoạch ngắn hạn (next steps, ưu tiên)
 
-1. **Ưu tiên cao:** Viết và nạp firmware STM32 (USB receive + I2C setPWM + safety).
-2. Tích hợp end-to-end: kiểm thử WebUSB → STM32 → PCA9685 → Servo.
-3. Hiệu chỉnh (calibrate) map góc ↔ PWM cho từng servo.
-4. Thu thập dữ liệu thử nghiệm và điền vào phần Kết quả báo cáo: latency, sai số, hình ảnh/clip demo.
-5. Bổ sung tính năng: feedback sensor (optional encoder hoặc potentiometer) để có control đóng vòng.
+1. ✅ **Hoàn thành:** Viết và nạp firmware STM32 (USB receive + I2C setPWM + safety).
+2. **Ưu tiên cao:** Tích hợp Protocol Buffers vào Keil MDK project (xem `apps/firmware/PROTO_INTEGRATION.md`).
+3. **Ưu tiên cao:** Build và nạp firmware lên STM32F103C8T6.
+4. Tích hợp end-to-end: kiểm thử WebUSB → STM32 → PCA9685 → Servo.
+5. Hiệu chỉnh (calibrate) map góc ↔ PWM cho từng servo (điều chỉnh SERVO_MIN/MAX_PULSE_US trong `pca9685.h`).
+6. Thu thập dữ liệu thử nghiệm và điền vào phần Kết quả báo cáo: latency, sai số, hình ảnh/clip demo.
+7. Bổ sung tính năng: feedback sensor (optional encoder hoặc potentiometer) để có control đóng vòng.
+
+## 7. Chi tiết kỹ thuật Protocol Buffers
+
+### Message Format
+
+Dự án sử dụng Protocol Buffers (nanopb) để giao tiếp giữa web interface và STM32:
+
+```protobuf
+message Message {
+  uint32 seq = 1;                 // Sequence number
+  uint64 timestamp_ms = 2;        // Timestamp
+  oneof payload {
+    Heartbeat heartbeat = 10;
+    SetJointAngles set_joint_angles = 11;
+    Ack ack = 12;
+  }
+}
+
+message SetJointAngles {
+  float base_rad = 1;       // Base angle in radians
+  float shoulder_rad = 2;   // Shoulder angle in radians
+  float elbow_rad = 3;      // Elbow angle in radians
+}
+```
+
+### Firmware Architecture
+
+Firmware sử dụng FreeRTOS với các tasks:
+
+1. **TProtocolParser** (Normal priority): Xử lý USB data (hiện tại idle, xử lý trong USB callback)
+2. **TServoControl** (High priority): Đọc commands từ queue và điều khiển servos
+3. **TSafetyMonitor** (Realtime priority): Giám sát timeout và safety conditions
+4. **DefaultTask** (Normal priority): Khởi tạo USB device
+
+### Communication Flow
+
+1. Browser encode joint angles thành protobuf message
+2. Gửi qua WebUSB/CDC đến STM32
+3. USB CDC callback nhận data vào circular buffer
+4. Decode protobuf message bằng nanopb
+5. Validate và clamp angles trong giới hạn an toàn
+6. Đưa command vào FreeRTOS queue
+7. Servo Control task lấy command và điều khiển PCA9685
+8. PCA9685 xuất PWM signals cho servos
 
 ---
 

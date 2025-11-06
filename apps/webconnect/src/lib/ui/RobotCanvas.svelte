@@ -1,11 +1,11 @@
 <script lang="ts">
-import { getCDNLoader } from '$lib/cdn';
-import { CDN_CONFIG, ROBOT_CONFIG } from '$lib/config';
-import { logger } from '$lib/core';
-import { RobotIKSolver } from '$lib/ik';
-import { robot } from '$lib/state';
-import { RobotScene } from '$lib/three';
-import { RobotURDFLoader } from '$lib/urdf';
+import { getCDNLoader } from '@lib/cdn';
+import { CDN_CONFIG, ROBOT_CONFIG } from '@lib/config';
+import { logger } from '@lib/core';
+import { RobotIKSolver } from '@lib/ik';
+import { robot } from '@lib/state';
+import { RobotScene } from '@lib/three';
+import { RobotURDFLoader } from '@lib/urdf';
 import { InlineNotification, Loading } from 'carbon-components-svelte';
 import { onDestroy, onMount } from 'svelte';
 

@@ -1,5 +1,5 @@
-import { IKError, logger } from '$lib/core';
-import { clamp } from '$lib/utils';
+import { IKError, logger } from '@lib/core';
+import { clamp } from '@lib/utils';
 import type { URDFJoint } from 'urdf-loader';
 
 export interface JointLimits {

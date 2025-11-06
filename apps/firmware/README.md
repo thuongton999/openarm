@@ -39,8 +39,10 @@ PCA9685 → Servos
    - Idle task
 
 2. **TProtocolParser** (Normal Priority)
-   - Currently idle (parsing handled in USB callback)
-   - Reserved for future protocol extensions
+   - Waits for USB data signal from ISR
+   - Decodes Protocol Buffer messages in task context
+   - Validates and queues commands for servo control
+   - **See `ISR_TASK_ARCHITECTURE.md` for detailed explanation**
 
 3. **TServoControl** (High Priority)
    - Reads commands from queue
@@ -72,16 +74,20 @@ message SetJointAngles {
 }
 ```
 
-### Data Flow
+### Data Flow (ISR-to-Task Pattern)
 
 1. Web interface sends protobuf-encoded message via USB CDC
-2. `CDC_Receive_FS()` callback stores data in circular buffer
-3. `USB_ProcessReceivedData()` decodes protobuf message
-4. Angles are validated and clamped to safe limits
-5. Command is queued to FreeRTOS message queue
-6. `StartServoControl()` task processes command
-7. PCA9685 driver converts angles to PWM signals
-8. Servos move to target positions
+2. `CDC_Receive_FS()` **ISR** stores data in circular buffer (fast, non-blocking)
+3. ISR signals `UsbDataAvailable` semaphore to wake up task
+4. `TProtocolParser` **task** wakes up and calls `USB_ProcessReceivedData()`
+5. Task decodes protobuf message (can use mutex, blocking operations)
+6. Angles are validated and clamped to safe limits
+7. Command is queued to FreeRTOS message queue
+8. `TServoControl` task processes command
+9. PCA9685 driver converts angles to PWM signals
+10. Servos move to target positions
+
+**Important**: This architecture ensures no blocking operations occur in ISR context. See `ISR_TASK_ARCHITECTURE.md` for detailed explanation.
 
 ## Building the Project
 

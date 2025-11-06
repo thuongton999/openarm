@@ -1,6 +1,6 @@
-import { ROBOT_CONFIG } from '$lib/config';
-import { logger } from '$lib/core';
-import { clamp, throttle, debounce } from '$lib/utils';
+import { ROBOT_CONFIG } from '@lib/config';
+import { logger } from '@lib/core';
+import { clamp, debounce, throttle } from '@lib/utils';
 import { derived, get, writable } from 'svelte/store';
 import { connection } from './connection';
 import { robot } from './robot';
@@ -32,7 +32,11 @@ function createJointsStore() {
 	let lastSerialSend = 0;
 	const SERIAL_THROTTLE_MS = 10; // 100Hz max serial update rate
 
-	const throttledSendAngles = (angles: { baseRad: number; shoulderRad: number; elbowRad: number }) => {
+	const throttledSendAngles = (angles: {
+		baseRad: number;
+		shoulderRad: number;
+		elbowRad: number;
+	}) => {
 		const now = Date.now();
 		if (now - lastSerialSend >= SERIAL_THROTTLE_MS) {
 			lastSerialSend = now;
@@ -65,7 +69,11 @@ function createJointsStore() {
 				}
 
 				// Send to serial with throttling to prevent overwhelming STM32
-				const angles = { baseRad: newState.base, shoulderRad: newState.arm1, elbowRad: newState.arm2 };
+				const angles = {
+					baseRad: newState.base,
+					shoulderRad: newState.arm1,
+					elbowRad: newState.arm2
+				};
 				throttledSendAngles(angles);
 
 				return newState;
@@ -74,7 +82,7 @@ function createJointsStore() {
 
 		setAll(angles: Partial<JointState>) {
 			update((state) => {
-				const newState = { ...state, ...angles };
+				const newState: JointState = { ...state, ...angles };
 
 				// Update URDF model immediately for smooth visual feedback
 				const robotState = get(robot);
@@ -89,8 +97,12 @@ function createJointsStore() {
 				}
 
 				// Send to serial with throttling
-				const angles = { baseRad: newState.base, shoulderRad: newState.arm1, elbowRad: newState.arm2 };
-				throttledSendAngles(angles);
+				const serialAngles = {
+					baseRad: newState.base,
+					shoulderRad: newState.arm1,
+					elbowRad: newState.arm2
+				};
+				throttledSendAngles(serialAngles);
 
 				return newState;
 			});

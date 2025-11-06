@@ -1,6 +1,6 @@
-import { getCDNLoader } from '$lib/cdn';
-import { ROBOT_CONFIG } from '$lib/config';
-import { URDFError, logger } from '$lib/core';
+import { getCDNLoader } from '@lib/cdn';
+import { ROBOT_CONFIG } from '@lib/config';
+import { URDFError, logger } from '@lib/core';
 import * as THREE from 'three';
 import URDFLoader from 'urdf-loader';
 import type { URDFJoint, URDFRobot } from 'urdf-loader';
@@ -26,7 +26,7 @@ export class RobotURDFLoader {
 	private setupURLModifier(): void {
 		this.loadingManager.setURLModifier((url: string) => {
 			// Normalize backslashes to forward slashes
-			let normalized = url.replace(/\\/g, '/');
+			const normalized = url.replace(/\\/g, '/');
 
 			// Try different cache key variations
 			const cacheKeys = [
@@ -38,20 +38,20 @@ export class RobotURDFLoader {
 			for (const key of cacheKeys) {
 				const cached = this.assetUrlMap.get(key);
 				if (cached) {
-					logger.info('URL resolved from cache', { 
-						original: url, 
+					logger.info('URL resolved from cache', {
+						original: url,
 						cacheKey: key,
-						resolved: cached 
+						resolved: cached
 					});
 					return cached;
 				}
 			}
 
 			// If not in cache, log warning
-			logger.warn('URL not in cache, using as-is', { 
-				url, 
+			logger.warn('URL not in cache, using as-is', {
+				url,
 				normalized,
-				cacheSize: this.assetUrlMap.size 
+				cacheSize: this.assetUrlMap.size
 			});
 			return normalized;
 		});
@@ -147,26 +147,26 @@ export class RobotURDFLoader {
 		// Get unique processed (hashed) filenames
 		const uniqueFiles = new Set(matches.map((m) => m[1]));
 
-		logger.info('Pre-resolving hashed asset URLs from manifest', { 
+		logger.info('Pre-resolving hashed asset URLs from manifest', {
 			count: uniqueFiles.size,
-			files: Array.from(uniqueFiles) 
+			files: Array.from(uniqueFiles)
 		});
 
 		for (const processedFilename of uniqueFiles) {
 			try {
 				// Get CDN URL by processed (hashed) filename
 				const cdnUrl = await this.cdnLoader.getAssetUrlByProcessed(processedFilename);
-				
+
 				// Cache all path variations that Three.js might use
 				const key1 = `package://assets/${processedFilename}`;
 				const key2 = `assets/${processedFilename}`;
 				const key3 = processedFilename;
-				
+
 				this.assetUrlMap.set(key1, cdnUrl);
 				this.assetUrlMap.set(key2, cdnUrl);
 				this.assetUrlMap.set(key3, cdnUrl);
 
-				logger.info('Cached asset URL mapping', { 
+				logger.info('Cached asset URL mapping', {
 					processed: processedFilename,
 					keys: [key1, key2, key3],
 					cdnUrl
@@ -176,7 +176,7 @@ export class RobotURDFLoader {
 			}
 		}
 
-		logger.info('Pre-resolution complete', { 
+		logger.info('Pre-resolution complete', {
 			uniqueAssets: uniqueFiles.size,
 			cacheEntries: this.assetUrlMap.size,
 			cacheKeys: Array.from(this.assetUrlMap.keys())

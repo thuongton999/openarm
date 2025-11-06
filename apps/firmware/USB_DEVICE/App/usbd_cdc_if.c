@@ -104,6 +104,7 @@ static volatile uint16_t rx_read_idx = 0;
 // External references to FreeRTOS objects
 extern osMessageQueueId_t CommandQueueHandle;
 extern osMutexId_t RxBufferMutexHandle;
+extern osSemaphoreId_t UsbDataAvailableHandle;
 
 /* USER CODE END PRIVATE_VARIABLES */
 
@@ -147,12 +148,6 @@ static uint16_t USB_GetAvailableBytes(void);
  * @brief Read bytes from circular buffer
  */
 static uint16_t USB_ReadBuffer(uint8_t *dest, uint16_t max_len);
-
-/**
- * @brief Process received data and extract messages
- */
-static void USB_ProcessReceivedData(void);
-
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -285,23 +280,22 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
   
-  // Copy received data to circular buffer
-  if (osMutexAcquire(RxBufferMutexHandle, 10) == osOK) {
-    for (uint32_t i = 0; i < *Len; i++) {
-      usb_rx_buffer[rx_write_idx] = Buf[i];
-      rx_write_idx = (rx_write_idx + 1) % PROTOCOL_BUFFER_SIZE;
-      
-      // Check for buffer overflow
-      if (rx_write_idx == rx_read_idx) {
-        // Buffer full, drop oldest data
-        rx_read_idx = (rx_read_idx + 1) % PROTOCOL_BUFFER_SIZE;
-      }
-    }
-    osMutexRelease(RxBufferMutexHandle);
+  // Copy received data to circular buffer (no mutex needed in ISR)
+  // This is safe because only the ISR writes and only the task reads
+  for (uint32_t i = 0; i < *Len; i++) {
+    usb_rx_buffer[rx_write_idx] = Buf[i];
+    rx_write_idx = (rx_write_idx + 1) % PROTOCOL_BUFFER_SIZE;
     
-    // Try to process received data
-    USB_ProcessReceivedData();
+    // Check for buffer overflow
+    if (rx_write_idx == rx_read_idx) {
+      // Buffer full, drop oldest data
+      rx_read_idx = (rx_read_idx + 1) % PROTOCOL_BUFFER_SIZE;
+    }
   }
+  
+  // Signal the protocol parser task that data is available
+  // This is safe to call from an ISR
+  osSemaphoreRelease(UsbDataAvailableHandle);
   
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
@@ -372,8 +366,10 @@ static uint16_t USB_ReadBuffer(uint8_t *dest, uint16_t max_len)
  * This function looks for complete protobuf messages in the receive buffer.
  * Protocol Buffers uses varint encoding, so we need to try decoding and
  * check if we have a complete message.
+ * 
+ * NOTE: This function is called from the TProtocolParser task, not from ISR.
  */
-static void USB_ProcessReceivedData(void)
+void USB_ProcessReceivedData(void)
 {
     static uint8_t temp_buffer[PROTOCOL_MAX_MESSAGE_SIZE];
     openarm_v1_Message msg;

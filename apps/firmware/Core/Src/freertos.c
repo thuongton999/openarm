@@ -69,6 +69,13 @@ const osThreadAttr_t TSafetyMonitor_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
+/* Definitions for TProtocolParser */
+osThreadId_t TProtocolParserHandle;
+const osThreadAttr_t TProtocolParser_attributes = {
+  .name = "TProtocolParser",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* Definitions for CommandQueue */
 osMessageQueueId_t CommandQueueHandle;
 const osMessageQueueAttr_t CommandQueue_attributes = {
@@ -84,10 +91,10 @@ osMutexId_t RxBufferMutexHandle;
 const osMutexAttr_t RxBufferMutex_attributes = {
   .name = "RxBufferMutex"
 };
-/* Definitions for I2cSemaphore */
-osSemaphoreId_t I2cSemaphoreHandle;
-const osSemaphoreAttr_t I2cSemaphore_attributes = {
-  .name = "I2cSemaphore"
+/* Definitions for UsbDataAvailable */
+osSemaphoreId_t UsbDataAvailableHandle;
+const osSemaphoreAttr_t UsbDataAvailable_attributes = {
+  .name = "UsbDataAvailable"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,6 +105,7 @@ const osSemaphoreAttr_t I2cSemaphore_attributes = {
 void StartDefaultTask(void *argument);
 void StartServoControl(void *argument);
 void StartSafetyMonitor(void *argument);
+void StartProtocolParser(void *argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -152,8 +160,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
-  /* creation of I2cSemaphore */
-  I2cSemaphoreHandle = osSemaphoreNew(1, 1, &I2cSemaphore_attributes);
+  /* creation of UsbDataAvailable */
+  UsbDataAvailableHandle = osSemaphoreNew(1, 0, &UsbDataAvailable_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -180,6 +188,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of TSafetyMonitor */
   TSafetyMonitorHandle = osThreadNew(StartSafetyMonitor, NULL, &TSafetyMonitor_attributes);
+
+  /* creation of TProtocolParser */
+  TProtocolParserHandle = osThreadNew(StartProtocolParser, NULL, &TProtocolParser_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -302,6 +313,33 @@ __weak void StartSafetyMonitor(void *argument)
     osDelay(100);
   }
   /* USER CODE END StartSafetyMonitor */
+}
+
+/* USER CODE BEGIN Header_StartProtocolParser */
+/**
+* @brief Function implementing the TProtocolParser thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartProtocolParser */
+__weak void StartProtocolParser(void *argument)
+{
+  /* USER CODE BEGIN StartProtocolParser */
+  
+  // External reference to USB processing function
+  extern void USB_ProcessReceivedData(void);
+  
+  /* Infinite loop */
+  for(;;)
+  {
+    // Wait for signal from USB ISR that data is available
+    if (osSemaphoreAcquire(UsbDataAvailableHandle, osWaitForever) == osOK)
+    {
+      // Process the received data in task context (not ISR)
+      USB_ProcessReceivedData();
+    }
+  }
+  /* USER CODE END StartProtocolParser */
 }
 
 /* Private application code --------------------------------------------------*/

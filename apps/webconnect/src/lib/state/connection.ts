@@ -1,5 +1,6 @@
-import { logger } from '$lib/core';
-import { ProtoClient, Message, Status } from '$lib/proto';
+import { logger } from '@lib/core';
+import { ProtoClient } from '@lib/proto';
+import type { Message } from '@openarm/proto-es';
 import { derived, writable } from 'svelte/store';
 
 export enum ConnectionStatus {
@@ -24,6 +25,8 @@ function createConnectionStore() {
 
 	let port: SerialPort | null = null;
 	let protoClient: ProtoClient | null = null;
+	let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+	let keepReading = false;
 
 	const handleMessage = (message: Message) => {
 		logger.debug('Received message', message);
@@ -33,7 +36,11 @@ function createConnectionStore() {
 		switch (message.payload.case) {
 			case 'ack':
 				const ack = message.payload.value;
-				logger.info('Received ack', { seqAck: ack.seqAck, status: ack.status, message: ack.message });
+				logger.info('Received ack', {
+					seqAck: ack.seqAck,
+					status: ack.status,
+					message: ack.message
+				});
 				break;
 			case 'heartbeat':
 				logger.debug('Received heartbeat');
@@ -43,9 +50,92 @@ function createConnectionStore() {
 		}
 	};
 
+	const disconnect = async () => {
+		try {
+			await stopReading();
+
+			if (port?.writable) {
+				const writer = port.writable.getWriter();
+				await writer.close();
+				writer.releaseLock();
+			}
+
+			if (port) {
+				await port.close();
+				port = null;
+			}
+
+			protoClient = null;
+
+			set({ status: ConnectionStatus.DISCONNECTED, error: null, lastMessageTime: null });
+			logger.info('Disconnected from serial port');
+		} catch (err) {
+			logger.error('Disconnect error', err);
+		}
+	};
+
 	const handleError = (error: Error) => {
 		logger.error('Serial error', error);
-		update((state) => ({ ...state, status: ConnectionStatus.ERROR, error: error.message }));
+		set({ status: ConnectionStatus.ERROR, error: error.message, lastMessageTime: null });
+		void disconnect();
+	};
+
+	const startReading = async () => {
+		if (!port || !protoClient) return;
+		keepReading = true;
+
+		reader = port.readable?.getReader() ?? null;
+		if (!reader) {
+			handleError(new Error('Failed to get reader'));
+			return;
+		}
+
+		let buffer = new Uint8Array(0);
+
+		while (port.readable && keepReading) {
+			try {
+				const { value, done } = await reader.read();
+				if (done) {
+					break;
+				}
+
+				const newBuffer = new Uint8Array(buffer.length + value.length);
+				newBuffer.set(buffer);
+				newBuffer.set(value, buffer.length);
+				buffer = newBuffer;
+
+				// Try to decode one or more messages from the buffer
+				while (buffer.length > 0) {
+					try {
+						const { message, consumed } = protoClient.decodeDelimited(buffer);
+						handleMessage(message);
+						buffer = buffer.slice(consumed);
+					} catch (err) {
+						// Not enough data for a complete message, wait for more
+						break;
+					}
+				}
+			} catch (err) {
+				if (keepReading) {
+					handleError(err instanceof Error ? err : new Error(String(err)));
+				}
+				break;
+			}
+		}
+
+		reader.releaseLock();
+		reader = null;
+	};
+
+	const stopReading = async () => {
+		keepReading = false;
+		if (reader) {
+			try {
+				await reader.cancel();
+			} catch (err) {
+				// Ignore errors on cancel, as the port might already be closed
+			}
+		}
 	};
 
 	return {
@@ -56,13 +146,15 @@ function createConnectionStore() {
 				update((state) => ({ ...state, status: ConnectionStatus.CONNECTING, error: null }));
 
 				// Request serial port
-				port = await navigator.serial.requestPort();
+				port = await navigator.serial.requestPort({
+					filters: [{ usbVendorId: 0x0483, usbProductId: 0x5740 }]
+				});
 				await port.open({ baudRate: 115200 });
 
 				protoClient = new ProtoClient();
 
 				// Start reading loop
-				this.startReading();
+				startReading();
 
 				update((state) => ({ ...state, status: ConnectionStatus.CONNECTED }));
 				logger.info('Connected to serial port');
@@ -77,83 +169,7 @@ function createConnectionStore() {
 			}
 		},
 
-		startReading() {
-			if (!port || !protoClient) return;
-
-			const readLoop = async () => {
-				try {
-					const reader = port.readable?.getReader();
-					if (!reader) return;
-
-					const buffer: Uint8Array[] = [];
-					let bufferSize = 0;
-
-					while (true) {
-						const { value, done } = await reader.read();
-						if (done) break;
-
-						buffer.push(value);
-						bufferSize += value.length;
-
-						// Try to decode messages from accumulated buffer
-						let offset = 0;
-						while (offset < bufferSize) {
-							try {
-								// Find message boundary (protobuf varint length prefix)
-								const view = new Uint8Array(bufferSize);
-								let viewOffset = 0;
-
-								// Copy all buffer chunks into a single view
-								for (const chunk of buffer) {
-									view.set(chunk, viewOffset);
-									viewOffset += chunk.length;
-								}
-
-								const message = protoClient.decodeDelimited(view.slice(offset));
-								handleMessage(message);
-
-								// Skip the consumed bytes
-								const consumed = protoClient.encodeMessage(message).length;
-								offset += consumed;
-
-								// Clean up consumed chunks
-								while (buffer.length > 0 && offset >= buffer[0].length) {
-									offset -= buffer[0].length;
-									buffer.shift();
-								}
-								bufferSize -= consumed;
-
-							} catch (err) {
-								// Not enough data for a complete message, wait for more
-								break;
-							}
-						}
-					}
-
-					reader.releaseLock();
-				} catch (err) {
-					handleError(err instanceof Error ? err : new Error(String(err)));
-				}
-			};
-
-			readLoop();
-		},
-
-		async disconnect() {
-			try {
-				if (port) {
-					await port.close();
-					port = null;
-				}
-
-				protoClient = null;
-
-				set({ status: ConnectionStatus.DISCONNECTED, error: null, lastMessageTime: null });
-				logger.info('Disconnected from serial port');
-			} catch (err) {
-				logger.error('Disconnect error', err);
-			}
-		},
+		disconnect,
 
 		async sendAngles(angles: { baseRad: number; shoulderRad: number; elbowRad: number }) {
 			if (!port || !protoClient) {
@@ -163,7 +179,6 @@ function createConnectionStore() {
 
 			try {
 				const message = protoClient.createSetJointAngles(angles);
-				await protoClient.validateMessage(message);
 
 				const writer = port.writable?.getWriter();
 				if (!writer) {
@@ -179,7 +194,7 @@ function createConnectionStore() {
 				logger.error('Failed to send angles', err);
 				handleError(err instanceof Error ? err : new Error(String(err)));
 			}
-		},
+		}
 	};
 }
 

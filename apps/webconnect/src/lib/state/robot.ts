@@ -1,5 +1,5 @@
-import type { RobotIKSolver } from '$lib/ik';
-import type { RobotModel } from '$lib/urdf';
+import type { RobotIKSolver } from '@lib/ik';
+import type { RobotModel } from '@lib/urdf';
 import { writable } from 'svelte/store';
 
 interface RobotState {

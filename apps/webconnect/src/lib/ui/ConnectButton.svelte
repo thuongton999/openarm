@@ -1,6 +1,6 @@
 <script lang="ts">
-import { features } from '$lib/core';
-import { ConnectionStatus, connection, isConnected } from '$lib/state';
+import { features } from '@lib/core';
+import { ConnectionStatus, connection, isConnected } from '@lib/state';
 import { Button, InlineNotification, Tag } from 'carbon-components-svelte';
 import { PlugFilled, Unlink } from 'carbon-icons-svelte';
 

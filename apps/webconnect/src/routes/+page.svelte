@@ -1,11 +1,7 @@
 <script lang="ts">
-import { APP_CONFIG, UI_CONFIG } from '$lib/config';
-import { ConnectButton, JointSliders, RobotCanvas } from '$lib/ui';
-import {
-	Content,
-	Header,
-	Theme
-} from 'carbon-components-svelte';
+import { APP_CONFIG, UI_CONFIG } from '@lib/config';
+import { ConnectButton, JointSliders, RobotCanvas } from '@lib/ui';
+import { Content, Header, Theme } from 'carbon-components-svelte';
 </script>
 
 <svelte:head>

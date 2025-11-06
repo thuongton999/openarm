@@ -4,8 +4,8 @@
  * Single Responsibility: Manage CDN asset loading
  */
 
-import { CDN_CONFIG } from '$lib/config';
-import { logger } from '$lib/core';
+import { CDN_CONFIG } from '@lib/config';
+import { logger } from '@lib/core';
 
 export interface AssetManifest {
 	version: string;

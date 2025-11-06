@@ -1,6 +1,6 @@
 <script lang="ts">
-import { joints } from '$lib/state';
-import { toDegrees, toRadians } from '$lib/utils';
+import { joints } from '@lib/state';
+import { toDegrees, toRadians } from '@lib/utils';
 import { Button, Slider, Tile } from 'carbon-components-svelte';
 import { Reset } from 'carbon-icons-svelte';
 

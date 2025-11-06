@@ -1,5 +1,5 @@
-import { SCENE_CONFIG } from '$lib/config';
-import { logger } from '$lib/core';
+import { SCENE_CONFIG } from '@lib/config';
+import { logger } from '@lib/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 

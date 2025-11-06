@@ -110,6 +110,12 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
 
+/**
+ * @brief Process received USB data and decode protobuf messages
+ * @note Called from TProtocolParser task, not from ISR
+ */
+void USB_ProcessReceivedData(void);
+
 /* USER CODE END EXPORTED_FUNCTIONS */
 
 /**
