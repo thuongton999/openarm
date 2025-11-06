@@ -161,26 +161,15 @@ VITE_CDN_PUBLIC_URL=https://assets.openarm.dev
 
 ## 🚀 Deployment
 
-### Cloudflare Pages (Recommended)
-Deploy to Cloudflare Pages for global CDN delivery and automatic HTTPS:
+The `webconnect` application is deployed to Vercel, providing a seamless and scalable hosting solution.
 
-1. **Connect Repository** in [Cloudflare Pages](https://pages.cloudflare.com/)
-2. **Configure Build**: `bun run build` with output directory `.svelte-kit/cloudflare`
-3. **Set Environment Variables** for CDN URLs
-4. **Deploy**: Automatic deployments on git push
+### Vercel Configuration
 
-### Manual Deployment
-```bash
-cd apps/webconnect
+-   **Build Command**: `cd apps/webconnect && bun run build`
+-   **Output Directory**: `.vercel/output`
+-   **Framework**: SvelteKit
 
-# Deploy to production
-bun run deploy
-
-# Deploy to staging
-bun run deploy:staging
-```
-
-See [WebConnect Deployment Guide](apps/webconnect/DEPLOYMENT.md) for detailed instructions.
+For detailed deployment instructions, please refer to the [`apps/webconnect/README.md`](./apps/webconnect/README.md).
 
 ## 🧪 Development
 

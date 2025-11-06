@@ -165,29 +165,27 @@ LENGTH: 12 bytes
 
 ## 🚀 Deployment
 
-### Cloudflare Pages (Recommended)
-Deploy to Cloudflare Pages for global CDN delivery and automatic HTTPS:
+Deploy the `webconnect` app to Vercel for a seamless, production-ready hosting experience.
 
-1. **Connect Repository** in [Cloudflare Pages](https://pages.cloudflare.com/)
-2. **Configure Build**: `bun run build` with output directory `.svelte-kit/cloudflare`
-3. **Set Environment Variables** for CDN URLs
-4. **Deploy**: Automatic deployments on git push
+### Vercel Deployment
 
-### Manual Deployment
-```bash
-cd apps/webconnect
+1.  **Install the Vercel CLI**:
+    ```bash
+    bun add -g vercel
+    ```
 
-# Deploy to production
-bun run deploy
+2.  **Deploy to Production**:
+    Run the following command from the `apps/webconnect` directory:
+    ```bash
+    bun run vercel:deploy
+    ```
+    Vercel will automatically detect the SvelteKit project and configure the build settings. You will be prompted to link the project to a Vercel account and set the project root to `apps/webconnect`.
 
-# Deploy to staging
-bun run deploy:staging
-
-# Local development with Cloudflare Pages runtime
-bun run pages:dev
-```
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+3.  **Local Development**:
+    To run a local development server that mirrors the Vercel environment, use:
+    ```bash
+    bun run vercel:dev
+    ```
 
 ## Tech Stack
 
