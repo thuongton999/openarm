@@ -38,7 +38,7 @@ function resetJoints() {
 	<Slider
 		labelText="Base Joint: {toDegrees(baseAngle).toFixed(1)}°"
 		min={0}
-		max={360}
+		max={180}
 		step={1}
 		value={toDegrees(baseAngle)}
 		on:input={handleBaseChange}
@@ -47,8 +47,8 @@ function resetJoints() {
 
 	<Slider
 		labelText="Arm 1: {toDegrees(arm1Angle).toFixed(1)}°"
-		min={-90}
-		max={90}
+		min={0}
+		max={180}
 		step={1}
 		value={toDegrees(arm1Angle)}
 		on:input={handleArm1Change}
@@ -57,8 +57,8 @@ function resetJoints() {
 
 	<Slider
 		labelText="Arm 2: {toDegrees(arm2Angle).toFixed(1)}°"
-		min={-90}
-		max={90}
+		min={0}
+		max={180}
 		step={1}
 		value={toDegrees(arm2Angle)}
 		on:input={handleArm2Change}

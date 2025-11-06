@@ -9,6 +9,7 @@ A 3-DOF robot arm control system with web-based interface, featuring real-time 3
 - **Interactive Control**: Smooth joint sliders with real-time feedback
 - **Inverse Kinematics**: Browser-based IK solver for intuitive end-effector control
 - **Web Serial Communication**: Direct hardware communication to STM32 microcontroller
+- **Protobuf Integration**: Type-safe, efficient serialization for serial communication
 - **CDN-Powered Assets**: Optimized asset delivery via Cloudflare R2
 - **Modern UI**: Carbon Design System with responsive design
 
@@ -24,8 +25,11 @@ A 3-DOF robot arm control system with web-based interface, featuring real-time 3
 open_arm/
 ├── apps/
 │   ├── webconnect/          # SvelteKit web application
-│   └── firmware/            # STM32 firmware (STM32CubeMX)
+│   └── firmware/            # STM32 firmware (STM32CubeMX + Keil MDK)
 ├── packages/
+│   ├── proto/               # Protobuf definitions for serial communication
+│   ├── proto-c/             # Generated C code for firmware
+│   ├── proto-es/            # Generated TypeScript code for web app
 │   └── cad/                 # CAD processing and CDN deployment
 ├── docs/
 │   └── paper.md            # Technical research paper
@@ -35,7 +39,7 @@ open_arm/
 ### System Overview
 - **Frontend**: SvelteKit + TypeScript + Three.js
 - **Backend**: STM32F103C8T6 microcontroller
-- **Communication**: Web Serial API + custom packet protocol
+- **Communication**: Web Serial API + Protobuf packet protocol
 - **Assets**: CDN-hosted URDF models and STL meshes
 - **Processing**: Python-based CAD pipeline with `onshape-to-robot`
 
@@ -68,7 +72,7 @@ open_arm/
 - **Bun** (latest stable)
 - **Python 3.13+** with uv
 - **Chrome/Edge** browser (Web Serial API support)
-- **STM32CubeIDE** (for firmware development)
+- **Keil MDK + STM32CubeMX** (for firmware development)
 
 ### 1. Clone and Setup
 ```bash
@@ -117,7 +121,8 @@ bun run dev
 cd apps/firmware
 
 # Open firmware.ioc in STM32CubeMX
-# Generate code and flash to STM32F103C8T6
+# Generate code for MDK-ARM, then open in Keil MDK
+# Build and flash to STM32F103C8T6
 ```
 
 ## 📖 Usage
@@ -166,7 +171,7 @@ The `webconnect` application is deployed to Vercel, providing a seamless and sca
 ### Vercel Configuration
 
 -   **Build Command**: `cd apps/webconnect && bun run build`
--   **Output Directory**: `.vercel/output`
+-   **Output Directory**: `apps/webconnect/.vercel/output`
 -   **Framework**: SvelteKit
 
 For detailed deployment instructions, please refer to the [`apps/webconnect/README.md`](./apps/webconnect/README.md).
@@ -264,7 +269,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🔗 Links
 
-- **Live Demo**: [Cloudflare Pages](https://openarm.pages.dev/)
+- **Live Demo**: [openarm.vercel.app](https://openarm.vercel.app/)
 - **CAD Assets**: [Onshape](https://cad.onshape.com/documents/ed7e8f56e8e86fc801280bc8/w/3524410636e59bebde6a8ce0/e/b69cef62fd195b6cdc087ebb)
 - **Documentation**: [Wiki](https://github.com/thuongton999/open_arm/wiki)
 
