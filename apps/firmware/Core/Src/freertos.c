@@ -229,43 +229,38 @@ void StartDefaultTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartServoControl */
-__weak void StartServoControl(void *argument)
+void StartServoControl(void *argument)
 {
   /* USER CODE BEGIN StartServoControl */
-  
   extern I2C_HandleTypeDef hi2c1;
   extern PCA9685_HandleTypeDef hpca9685;
-  
-  RobotCommand_t cmd;
-  osStatus_t status;
-  
-  // Wait for system to stabilize
-  osDelay(100);
-  
+
+  // Initialize PCA9685 PWM driver
+  if (PCA9685_Init(&hpca9685, &hi2c1, PCA9685_I2C_ADDRESS) != HAL_OK) {
+    Error_Handler();
+  }
+
+  // Set all servos to center position initially
+  PCA9685_SetServoAngle(&hpca9685, SERVO_CHANNEL_BASE, 90.0f);
+  PCA9685_SetServoAngle(&hpca9685, SERVO_CHANNEL_SHOULDER, 90.0f);
+  PCA9685_SetServoAngle(&hpca9685, SERVO_CHANNEL_ELBOW, 90.0f);
+  osDelay(500);
+
   /* Infinite loop */
   for(;;)
   {
-    // Wait for command from queue (blocking with timeout)
-    status = osMessageQueueGet(CommandQueueHandle, &cmd, NULL, 100);
-    
+    RobotCommand_t cmd;
+    osStatus_t status = osMessageQueueGet(CommandQueueHandle, &cmd, NULL, 100);
+
     if (status == osOK) {
-      // Acquire mutex for servo control
       if (osMutexAcquire(ServoMutexHandle, 50) == osOK) {
-        
-        // Set servo angles
-        // Channel 0: Base
-        // Channel 1: Shoulder (arm1)
-        // Channel 2: Elbow (arm2)
-        
-        PCA9685_SetServoAngleRad(&hpca9685, 0, cmd.angles.base_rad);
-        PCA9685_SetServoAngleRad(&hpca9685, 1, cmd.angles.shoulder_rad);
-        PCA9685_SetServoAngleRad(&hpca9685, 2, cmd.angles.elbow_rad);
-        
+        // Set servo angles using defined channels
+        PCA9685_SetServoAngleRad(&hpca9685, SERVO_CHANNEL_BASE, cmd.angles.base_rad);
+        PCA9685_SetServoAngleRad(&hpca9685, SERVO_CHANNEL_SHOULDER, cmd.angles.shoulder_rad);
+        PCA9685_SetServoAngleRad(&hpca9685, SERVO_CHANNEL_ELBOW, cmd.angles.elbow_rad);
         osMutexRelease(ServoMutexHandle);
       }
     }
-    
-    // Small delay to prevent tight loop
     osDelay(10);
   }
   /* USER CODE END StartServoControl */
@@ -278,38 +273,28 @@ __weak void StartServoControl(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartSafetyMonitor */
-__weak void StartSafetyMonitor(void *argument)
+void StartSafetyMonitor(void *argument)
 {
   /* USER CODE BEGIN StartSafetyMonitor */
-  
-  extern PCA9685_HandleTypeDef hpca9685;
-  
   static uint32_t last_command_time = 0;
-  const uint32_t TIMEOUT_MS = 2000; // 2 second timeout
-  
-  // Wait for system to stabilize
+  const uint32_t TIMEOUT_MS = 2000;
+
   osDelay(200);
-  
   last_command_time = HAL_GetTick();
-  
-  /* Infinite loop */
+
   for(;;)
   {
     uint32_t current_time = HAL_GetTick();
-    
-    // Check for command timeout
+
     if ((current_time - last_command_time) > TIMEOUT_MS) {
-      // No commands received for too long - implement safety action
-      // For now, we just monitor. Could add emergency stop here.
-      // Example: PCA9685_AllOff(&hpca9685);
+      // Safety action: could turn off all servos
+      // PCA9685_AllOff(&hpca9685);
     }
-    
-    // Update last command time if queue has items
+
     if (osMessageQueueGetCount(CommandQueueHandle) > 0) {
       last_command_time = current_time;
     }
-    
-    // Check every 100ms
+
     osDelay(100);
   }
   /* USER CODE END StartSafetyMonitor */
@@ -325,10 +310,10 @@ __weak void StartSafetyMonitor(void *argument)
 __weak void StartProtocolParser(void *argument)
 {
   /* USER CODE BEGIN StartProtocolParser */
-  
+
   // External reference to USB processing function
   extern void USB_ProcessReceivedData(void);
-  
+
   /* Infinite loop */
   for(;;)
   {

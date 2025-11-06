@@ -140,3 +140,29 @@ void Protocol_CreateAck(openarm_v1_Message *ack_msg, uint32_t seq, openarm_v1_St
         // For now, we'll leave it as is since it's optional
     }
 }
+
+/**
+ * @brief Decode a varint from a buffer.
+ * Reads bytes sequentially until the MSB is 0.
+ */
+uint8_t Protocol_DecodeVarint(const uint8_t *buffer, size_t max_len, uint32_t *value)
+{
+    *value = 0;
+    uint8_t offset = 0;
+    uint8_t byte;
+    int shift = 0;
+
+    do {
+        if (offset >= max_len || offset >= 5) { // Max 5 bytes for a 32-bit varint
+            *value = 0;
+            return 0; // Failure: buffer exhausted or varint too long
+        }
+        
+        byte = buffer[offset++];
+        *value |= (uint32_t)(byte & 0x7F) << shift;
+        shift += 7;
+
+    } while (byte & 0x80);
+
+    return offset;
+}

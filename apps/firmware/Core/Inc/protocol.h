@@ -105,6 +105,15 @@ void Protocol_ClampAngles(JointAngles_t *angles);
  */
 void Protocol_CreateAck(openarm_v1_Message *ack_msg, uint32_t seq, openarm_v1_Status status, const char *message);
 
+/**
+ * @brief Decode a varint (variable-length integer) from a buffer.
+ * @param buffer Pointer to the buffer containing the varint.
+ * @param max_len The maximum number of bytes to read from the buffer.
+ * @param value Pointer to store the decoded integer value.
+ * @return The number of bytes consumed (offset), or 0 on failure.
+ */
+uint8_t Protocol_DecodeVarint(const uint8_t *buffer, size_t max_len, uint32_t *value);
+
 #ifdef __cplusplus
 }
 #endif

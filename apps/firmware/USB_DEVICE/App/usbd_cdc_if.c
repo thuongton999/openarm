@@ -371,48 +371,83 @@ static uint16_t USB_ReadBuffer(uint8_t *dest, uint16_t max_len)
  */
 void USB_ProcessReceivedData(void)
 {
-    static uint8_t temp_buffer[PROTOCOL_MAX_MESSAGE_SIZE];
-    openarm_v1_Message msg;
+    static uint8_t process_buffer[PROTOCOL_BUFFER_SIZE];
+    uint16_t available_bytes;
     
-    if (osMutexAcquire(RxBufferMutexHandle, 10) != osOK) {
-        return;
-    }
-    
-    // Check if we have enough data to try decoding
-    uint16_t available = USB_GetAvailableBytes();
-    
-    if (available > 0) {
-        // Read available data (up to max message size)
-        uint16_t to_read = (available > PROTOCOL_MAX_MESSAGE_SIZE) ? PROTOCOL_MAX_MESSAGE_SIZE : available;
-        uint16_t bytes_read = USB_ReadBuffer(temp_buffer, to_read);
+    // This loop handles multiple messages in a single USB transfer
+    while (true) 
+    {
+        // Safely check available bytes
+        if (osMutexAcquire(RxBufferMutexHandle, 10) != osOK) return;
+        available_bytes = USB_GetAvailableBytes();
         
-        // Try to decode the message
-        if (Protocol_DecodeMessage(temp_buffer, bytes_read, &msg)) {
-            // Successfully decoded a message
-            
-            // Check if it's a SetJointAngles command
+        if (available_bytes < 2) { // Need at least 1 byte for length and 1 for payload
+            osMutexRelease(RxBufferMutexHandle);
+            return; // Not enough data for a valid message
+        }
+
+        // Peek at the buffer to decode the varint length prefix
+        // We can't use USB_ReadBuffer yet as we don't know how much to read
+        uint16_t peek_len = (available_bytes > 5) ? 5 : available_bytes; // Read up to 5 bytes for varint
+        uint16_t read_idx_copy = rx_read_idx;
+        for (uint16_t i = 0; i < peek_len; i++) {
+            process_buffer[i] = usb_rx_buffer[(read_idx_copy + i) % PROTOCOL_BUFFER_SIZE];
+        }
+
+        osMutexRelease(RxBufferMutexHandle); // Release mutex after peeking
+
+        uint32_t message_len = 0;
+        uint8_t varint_len = Protocol_DecodeVarint(process_buffer, peek_len, &message_len);
+
+        if (varint_len == 0) {
+             // Failed to decode varint, might be an incomplete length prefix
+            return;
+        }
+
+        uint16_t total_msg_len = varint_len + message_len;
+
+        if (available_bytes < total_msg_len) {
+            // We don't have the full message yet, wait for more data
+            return;
+        }
+
+        // We have a complete message, now read it from the buffer
+        if (osMutexAcquire(RxBufferMutexHandle, 10) != osOK) return;
+        
+        // Discard the varint prefix from the real buffer
+        for(uint8_t i = 0; i < varint_len; i++) {
+             rx_read_idx = (rx_read_idx + 1) % PROTOCOL_BUFFER_SIZE;
+        }
+
+        // Read the actual message payload
+        if (message_len > PROTOCOL_MAX_MESSAGE_SIZE) {
+            // Message too large, discard it to prevent buffer overflow
+            for(uint32_t i = 0; i < message_len; i++) {
+                rx_read_idx = (rx_read_idx + 1) % PROTOCOL_BUFFER_SIZE;
+            }
+            osMutexRelease(RxBufferMutexHandle);
+            continue; // Look for the next message
+        }
+        
+        USB_ReadBuffer(process_buffer, message_len);
+        osMutexRelease(RxBufferMutexHandle);
+
+        // Decode the protobuf message
+        openarm_v1_Message msg;
+        if (Protocol_DecodeMessage(process_buffer, message_len, &msg)) {
             if (msg.which_payload == openarm_v1_Message_set_joint_angles_tag) {
-                // Create robot command
                 RobotCommand_t cmd;
                 cmd.seq = msg.seq;
                 cmd.timestamp_ms = msg.timestamp_ms;
                 cmd.angles.base_rad = msg.payload.set_joint_angles.base_rad;
                 cmd.angles.shoulder_rad = msg.payload.set_joint_angles.shoulder_rad;
                 cmd.angles.elbow_rad = msg.payload.set_joint_angles.elbow_rad;
-                
-                // Validate and clamp angles
+
                 Protocol_ClampAngles(&cmd.angles);
-                
-                // Send to command queue (non-blocking)
                 osMessageQueuePut(CommandQueueHandle, &cmd, 0, 0);
             }
-            // Handle other message types here (heartbeat, etc.)
         }
-        // If decode fails, we might not have a complete message yet
-        // The data will be processed in the next call
     }
-    
-    osMutexRelease(RxBufferMutexHandle);
 }
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */

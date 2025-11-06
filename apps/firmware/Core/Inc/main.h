@@ -59,7 +59,9 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
-
+#define SERVO_CHANNEL_BASE      0
+#define SERVO_CHANNEL_SHOULDER  1
+#define SERVO_CHANNEL_ELBOW     2
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

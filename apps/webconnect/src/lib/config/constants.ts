@@ -46,9 +46,9 @@ export const ROBOT_CONFIG = {
 		arm2: 'arm2'
 	},
 	defaultLimits: {
-		base: { lower: 0, upper: 2 * Math.PI },
-		arm1: { lower: -Math.PI / 2, upper: Math.PI / 2 },
-		arm2: { lower: -Math.PI / 2, upper: Math.PI / 2 }
+		base: { lower: 0, upper: Math.PI },
+		arm1: { lower: 0, upper: Math.PI },
+		arm2: { lower: 0, upper: Math.PI }
 	}
 } as const;
 
