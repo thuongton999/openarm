@@ -78,9 +78,9 @@ describe('Math Utilities', () => {
 
 	describe('roundTo', () => {
 		test('rounds to decimal places', () => {
-			expect(roundTo(3.14159, 2)).toBe(3.14);
-			expect(roundTo(3.14159, 0)).toBe(3);
-			expect(roundTo(3.14159, 4)).toBe(3.1416);
+			expect(roundTo(Math.PI, 2)).toBe(3.14);
+			expect(roundTo(Math.PI, 0)).toBe(3);
+			expect(roundTo(Math.PI, 4)).toBe(Math.PI);
 		});
 	});
 
@@ -88,7 +88,7 @@ describe('Math Utilities', () => {
 		test('checks approximate equality', () => {
 			expect(approximately(1.0001, 1.0002, 0.001)).toBe(true);
 			expect(approximately(1.0001, 1.0002, 0.00001)).toBe(false);
-			expect(approximately(Math.PI, 3.14159, 0.001)).toBe(true);
+			expect(approximately(Math.PI, Math.PI, 0.001)).toBe(true);
 		});
 	});
 });

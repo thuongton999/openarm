@@ -8,6 +8,7 @@ import type { URDFJoint, URDFRobot } from 'urdf-loader';
 export interface RobotModel {
 	robot: URDFRobot;
 	joints: Map<string, URDFJoint>;
+	maxReach: number;
 }
 
 export class RobotURDFLoader {
@@ -120,12 +121,16 @@ export class RobotURDFLoader {
 			const joints = new Map<string, URDFJoint>();
 			this.collectJoints(robot, joints);
 
+			robot.updateMatrixWorld(true);
+			const maxReach = this.calculateMaxReach(robot);
+
 			logger.info('URDF loaded successfully', {
 				joints: joints.size,
-				links: Object.keys(robot.links).length
+				links: Object.keys(robot.links).length,
+				maxReach
 			});
 
-			return { robot, joints };
+			return { robot, joints, maxReach };
 		} catch (err) {
 			throw new URDFError('Failed to load URDF from CDN', {
 				path: urdfFilename,
@@ -192,5 +197,38 @@ export class RobotURDFLoader {
 		}
 
 		obj.children.forEach((child: THREE.Object3D) => this.collectJoints(child, joints));
+	}
+
+	private calculateMaxReach(robot: URDFRobot): number {
+		let maxReach = ROBOT_CONFIG.ik.maxReach;
+		const tempVec = new THREE.Vector3();
+		const tempSphere = new THREE.Sphere();
+
+		robot.traverse((object) => {
+			if ('isMesh' in object && (object as THREE.Mesh).isMesh) {
+				const mesh = object as THREE.Mesh;
+				const geometry = mesh.geometry;
+				if (!geometry) {
+					return;
+				}
+
+				if (!geometry.boundingSphere) {
+					geometry.computeBoundingSphere();
+				}
+
+				if (!geometry.boundingSphere) {
+					return;
+				}
+
+				tempSphere.copy(geometry.boundingSphere);
+				tempSphere.applyMatrix4(mesh.matrixWorld);
+				const reach = tempSphere.center.distanceTo(tempVec.set(0, 0, 0)) + tempSphere.radius;
+				if (reach > maxReach) {
+					maxReach = reach;
+				}
+			}
+		});
+
+		return maxReach;
 	}
 }

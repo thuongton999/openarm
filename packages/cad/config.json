@@ -5,13 +5,11 @@
     "assets_directory": "assets",
     "robot_name": "openarm",
     
-    // CDN Processor Configuration
     "cdn_enabled": true,
     "cdn_output_dir": "processed",
     "cdn_hash_length": 12,
     "cdn_generate_manifest": true,
     
-    // URDF-specific options
     "joint_properties": {
         "*": {
             "max_effort": 10.0,
@@ -19,7 +17,6 @@
         }
     },
     
-    // Custom processors
     "processors": [
         "processors.cdn_processor:CDNProcessor"
     ]

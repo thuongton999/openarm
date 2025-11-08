@@ -2,6 +2,7 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 class Logger {
 	private level: LogLevel = 'info';
+	private isProduction = import.meta.env.PROD;
 
 	setLevel(level: LogLevel): void {
 		this.level = level;
@@ -32,6 +33,9 @@ class Logger {
 	}
 
 	private shouldLog(level: LogLevel): boolean {
+		if (this.isProduction) {
+			return false;
+		}
 		const levels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
 		return levels.indexOf(level) >= levels.indexOf(this.level);
 	}

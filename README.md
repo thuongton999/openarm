@@ -154,14 +154,14 @@ R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 R2_BUCKET_NAME=openarm-cad-assets
-R2_PUBLIC_URL=https://assets.openarm.dev
+R2_PUBLIC_URL=<your-r2-public-url>
 ```
 
 #### WebConnect App (`apps/webconnect/.env`)
 ```ini
 # CDN Configuration
-VITE_CDN_MANIFEST_URL=https://assets.openarm.dev/manifest.json
-VITE_CDN_PUBLIC_URL=https://assets.openarm.dev
+VITE_CDN_MANIFEST_URL=<your-cdn-manifest-url>/manifest.json
+VITE_CDN_PUBLIC_URL=<your-cdn-public-url>
 ```
 
 ## 🚀 Deployment
@@ -236,7 +236,7 @@ uv run python scripts/upload_to_cdn.py      # Upload to CDN
 
 ## 📚 Documentation
 
-- [Technical Report](docs/report.md) - Technical report
+- [Technical Report](docs/summary.md) - Technical report
 - [CAD Processing](packages/cad/README.md) - Asset processing pipeline
 - [WebConnect](apps/webconnect/README.md) - Web application details
 

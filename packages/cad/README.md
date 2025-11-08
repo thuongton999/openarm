@@ -206,7 +206,7 @@ uv run onshape-to-robot .
 # 3. Upload to CDN
 uv run python scripts/upload_to_cdn.py
 
-# Result: Assets available at https://assets.openarm.dev
+# Result: Assets available at https://<your-public-r2-url>
 ```
 
 ### Quick Update
@@ -274,7 +274,7 @@ See `env.example` for complete list. Key variables:
 - `R2_ACCESS_KEY_ID` - R2 API key
 - `R2_SECRET_ACCESS_KEY` - R2 API secret
 - `R2_BUCKET_NAME` - Bucket name (default: `openarm-cad-assets`)
-- `R2_PUBLIC_URL` - Public CDN URL (default: `https://assets.openarm.dev`)
+- `R2_PUBLIC_URL` - Public CDN URL (default: `https://<your-public-r2-url>`)
 
 ---
 

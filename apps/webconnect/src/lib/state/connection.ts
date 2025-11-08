@@ -34,7 +34,7 @@ function createConnectionStore() {
 
 		// Handle different message types
 		switch (message.payload.case) {
-			case 'ack':
+			case 'ack': {
 				const ack = message.payload.value;
 				logger.info('Received ack', {
 					seqAck: ack.seqAck,
@@ -42,6 +42,7 @@ function createConnectionStore() {
 					message: ack.message
 				});
 				break;
+			}
 			case 'heartbeat':
 				logger.debug('Received heartbeat');
 				break;
@@ -110,7 +111,7 @@ function createConnectionStore() {
 						const { message, consumed } = protoClient.decodeDelimited(buffer);
 						handleMessage(message);
 						buffer = buffer.slice(consumed);
-					} catch (err) {
+					} catch (_err) {
 						// Not enough data for a complete message, wait for more
 						break;
 					}
@@ -132,7 +133,7 @@ function createConnectionStore() {
 		if (reader) {
 			try {
 				await reader.cancel();
-			} catch (err) {
+			} catch (_err) {
 				// Ignore errors on cancel, as the port might already be closed
 			}
 		}

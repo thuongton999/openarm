@@ -127,16 +127,16 @@ sequenceDiagram
   * Ổn định: jitter, rung, drift sau thời gian vận hành.
   * An toàn: hành vi khi mất tín hiệu/timeout.
 
-> Lưu ý: **không có số liệu thực nghiệm** trong báo cáo hiện tại vì firmware chưa triển khai — mọi giá trị đo cần đo trực tiếp sau khi hoàn thiện firmware.
+> Lưu ý: **không có số liệu thực nghiệm** trong báo cáo hiện tại vì chưa tiến hành đo đạc chi tiết — mọi giá trị đo cần đo trực tiếp trên hệ thống hoàn chỉnh.
 
 ---
 
 ## 6. Kế hoạch ngắn hạn (next steps, ưu tiên)
 
 1. ✅ **Hoàn thành:** Viết và nạp firmware STM32 (USB receive + I2C setPWM + safety).
-2. **Ưu tiên cao:** Tích hợp Protocol Buffers vào Keil MDK project (xem `apps/firmware/PROTO_INTEGRATION.md`).
-3. **Ưu tiên cao:** Build và nạp firmware lên STM32F103C8T6.
-4. Tích hợp end-to-end: kiểm thử WebUSB → STM32 → PCA9685 → Servo.
+2. ✅ **Hoàn thành:** Tích hợp Protocol Buffers vào Keil MDK project.
+3. ✅ **Hoàn thành:** Build và nạp firmware lên STM32F103C8T6.
+4. **Ưu tiên cao:** Tích hợp end-to-end: kiểm thử WebUSB → STM32 → PCA9685 → Servo.
 5. Hiệu chỉnh (calibrate) map góc ↔ PWM cho từng servo (điều chỉnh SERVO_MIN/MAX_PULSE_US trong `pca9685.h`).
 6. Thu thập dữ liệu thử nghiệm và điền vào phần Kết quả báo cáo: latency, sai số, hình ảnh/clip demo.
 7. Bổ sung tính năng: feedback sensor (optional encoder hoặc potentiometer) để có control đóng vòng.

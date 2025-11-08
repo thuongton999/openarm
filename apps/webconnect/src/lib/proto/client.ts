@@ -53,10 +53,10 @@ export class ProtoClient {
 
 	/**
 	 * Encodes a length value as a varint (variable-length integer).
-	 * 
+	 *
 	 * Varints encode integers using one or more bytes. Each byte uses 7 bits for data
 	 * and 1 bit (the MSB) as a continuation flag. If the MSB is set (1), more bytes follow.
-	 * 
+	 *
 	 * Example: 300 (0x12C) encodes as [0xAC, 0x02]
 	 * - First byte: 0xAC = 10101100 (MSB=1, data=0101100)
 	 * - Second byte: 0x02 = 00000010 (MSB=0, data=0000010)
@@ -79,11 +79,11 @@ export class ProtoClient {
 
 	/**
 	 * Decodes a varint (variable-length integer) from a buffer.
-	 * 
+	 *
 	 * Reads bytes sequentially, extracting 7 bits of data from each byte.
 	 * Continues reading while the MSB (bit 7) is set. Returns the decoded
 	 * length and the number of bytes consumed.
-	 * 
+	 *
 	 * @returns Object containing the decoded length and offset (bytes consumed)
 	 */
 	private decodeLength(buffer: Uint8Array): { length: number; offset: number } {

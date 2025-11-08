@@ -5,12 +5,12 @@ import { Button, InlineNotification, Tag } from 'carbon-components-svelte';
 import { PlugFilled, Unlink } from 'carbon-icons-svelte';
 
 let status = ConnectionStatus.DISCONNECTED;
-let error: string | null = null;
+let _error: string | null = null;
 let connected = false;
 
 connection.subscribe((state) => {
 	status = state.status;
-	error = state.error;
+	_error = state.error;
 });
 
 isConnected.subscribe((value) => {
@@ -65,11 +65,11 @@ function getButtonKind(): 'primary' | 'danger' | 'tertiary' {
 			{getButtonText()}
 		</Button>
 
-		{#if error}
+		{#if _error}
 			<InlineNotification
 				kind="error"
 				title="Connection Error"
-				subtitle={error}
+				subtitle={_error}
 				lowContrast
 				hideCloseButton
 			/>

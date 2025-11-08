@@ -44,7 +44,7 @@ class R2Config:
     access_key_id: str
     secret_access_key: str
     bucket_name: str = "openarm-cad-assets"
-    public_url: str = "https://assets.openarm.dev"
+    public_url: str = "https://pub-32ec14117deb400b966fd8cf8994ac73.r2.dev"
     region: str = "auto"
 
     @classmethod
