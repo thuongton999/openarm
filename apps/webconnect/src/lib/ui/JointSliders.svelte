@@ -1,5 +1,6 @@
 <script lang="ts">
 import { joints } from '@lib/state';
+import { ikEnabled } from '@lib/state/ik';
 import { toDegrees, toRadians } from '@lib/utils';
 import { Button, Slider, Tile } from 'carbon-components-svelte';
 import { Locked, Reset, Unlocked } from 'carbon-icons-svelte';
@@ -23,43 +24,46 @@ $effect(() => {
 });
 
 function handleBaseChange(event: CustomEvent<number>) {
-	if (!baseLocked) {
-		// Because the base joint is full rotation but the real servo only has 180 degrees of rotation
-		// We designed the mechanism to have 1:2 gear ratio to achieve the full rotation.
-		// Therefore, we need to divide the event.detail by 2.0 to get the correct angle.
-		joints.setJoint('base', toRadians(event.detail / 2.0));
+	if (!baseLocked && !$ikEnabled) {
+		joints.setJoint('base', toRadians(event.detail));
 	}
 }
 
 function handleArm1Change(event: CustomEvent<number>) {
-	if (!arm1Locked) {
+	if (!arm1Locked && !$ikEnabled) {
 		joints.setJoint('arm1', toRadians(event.detail));
 	}
 }
 
 function handleArm2Change(event: CustomEvent<number>) {
-	if (!arm2Locked) {
+	if (!arm2Locked && !$ikEnabled) {
 		joints.setJoint('arm2', toRadians(event.detail));
 	}
 }
 
 function resetJoints() {
+	if (!$ikEnabled) {
 	joints.reset();
+	}
 }
 </script>
 
 <Tile class="joint-control-tile">
 	<h4 style="margin-top: 0; margin-bottom: 1rem;">Joint Control</h4>
 
+	{#if $ikEnabled}
+		<p class="ik-disabled-message">Joint sliders are disabled while IK mode is active.</p>
+	{/if}
+
 	<div class="slider-container">
 		<Slider
 			labelText="Base Joint: {toDegrees(_baseAngle).toFixed(1)}°"
 			min={0}
-			max={360}
+			max={180}
 			step={1}
 			value={toDegrees(_baseAngle)}
 			on:input={handleBaseChange}
-			disabled={baseLocked}
+			disabled={baseLocked || $ikEnabled}
 			fullWidth
 			hideTextInput
 		/>
@@ -68,6 +72,7 @@ function resetJoints() {
 			icon={baseLocked ? Locked : Unlocked}
 			on:click={() => (baseLocked = !baseLocked)}
 			iconDescription={baseLocked ? 'Unlock Base Joint' : 'Lock Base Joint'}
+			disabled={$ikEnabled}
 		/>
 	</div>
 
@@ -79,7 +84,7 @@ function resetJoints() {
 			step={1}
 			value={toDegrees(_arm1Angle)}
 			on:input={handleArm1Change}
-			disabled={arm1Locked}
+			disabled={arm1Locked || $ikEnabled}
 			fullWidth
 			hideTextInput
 		/>
@@ -88,6 +93,7 @@ function resetJoints() {
 			icon={arm1Locked ? Locked : Unlocked}
 			on:click={() => (arm1Locked = !arm1Locked)}
 			iconDescription={arm1Locked ? 'Unlock Arm 1' : 'Lock Arm 1'}
+			disabled={$ikEnabled}
 		/>
 	</div>
 
@@ -99,7 +105,7 @@ function resetJoints() {
 			step={1}
 			value={toDegrees(_arm2Angle)}
 			on:input={handleArm2Change}
-			disabled={arm2Locked}
+			disabled={arm2Locked || $ikEnabled}
 			fullWidth
 			hideTextInput
 		/>
@@ -108,6 +114,7 @@ function resetJoints() {
 			icon={arm2Locked ? Locked : Unlocked}
 			on:click={() => (arm2Locked = !arm2Locked)}
 			iconDescription={arm2Locked ? 'Unlock Arm 2' : 'Lock Arm 2'}
+			disabled={$ikEnabled}
 		/>
 	</div>
 
@@ -117,6 +124,7 @@ function resetJoints() {
 		on:click={resetJoints}
 		size="field"
 		style="width: 100%; margin-top: 1rem;"
+		disabled={$ikEnabled}
 	>
 		Reset Joints
 	</Button>
@@ -131,5 +139,10 @@ function resetJoints() {
 	}
 	:global(.joint-control-tile .bx--slider) {
 		min-width: 0 !important;
+	}
+	.ik-disabled-message {
+		margin: 0 0 1rem;
+		font-size: 0.85rem;
+		color: var(--cds-text-secondary);
 	}
 </style>

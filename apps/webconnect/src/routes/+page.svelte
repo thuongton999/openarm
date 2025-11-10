@@ -1,6 +1,5 @@
 <script lang="ts">
 import { APP_CONFIG, UI_CONFIG } from '@lib/config';
-import { robot } from '@lib/state';
 import { ConnectButton, IKButton, JointSliders, RobotCanvas } from '@lib/ui';
 import { Content, Header, Theme } from 'carbon-components-svelte';
 </script>
@@ -22,13 +21,7 @@ import { Content, Header, Theme } from 'carbon-components-svelte';
 			<aside class="control-panel">
 				<ConnectButton />
 				<IKButton />
-				{#if !$robot.isIKMode}
-					<JointSliders />
-				{:else}
-					<div class="ik-disabled-hint">
-						Joint sliders are disabled while IK mode is active.
-					</div>
-				{/if}
+				<JointSliders />
 			</aside>
 		</div>
 	</Content>
@@ -64,15 +57,6 @@ import { Content, Header, Theme } from 'carbon-components-svelte';
 		background: var(--cds-layer-01);
 		border: 1px solid var(--cds-border-subtle-00);
 		overflow-y: auto;
-	}
-
-	.ik-disabled-hint {
-		padding: 0.75rem;
-		background: color-mix(in srgb, var(--cds-layer-02) 80%, transparent);
-		border-radius: 0.25rem;
-		font-size: 0.875rem;
-		color: var(--cds-text-secondary);
-		border: 1px dashed var(--cds-border-subtle-01);
 	}
 
 	@media (max-width: 1024px) {

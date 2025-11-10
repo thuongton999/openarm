@@ -3,18 +3,22 @@ import { getCDNLoader } from '@lib/cdn';
 import { CDN_CONFIG, ROBOT_CONFIG } from '@lib/config';
 import { logger } from '@lib/core';
 import { RobotIKSolver } from '@lib/ik';
-import { joints, robot } from '@lib/state';
-import { IKHelpers, RobotScene } from '@lib/three';
+import { robot } from '@lib/state';
+import { ikEnabled, ikTarget, setIKTarget } from '@lib/state/ik';
+import { RobotScene } from '@lib/three';
 import { RobotURDFLoader } from '@lib/urdf';
 import { InlineNotification, Loading } from 'carbon-components-svelte';
 import { onDestroy, onMount } from 'svelte';
-import { get } from 'svelte/store';
-import * as THREE from 'three';
+import { Vector3 } from 'three';
 
 let canvas: HTMLCanvasElement;
 let scene: RobotScene | null = null;
 let resizeObserver: ResizeObserver | null = null;
-let ikHelpers: IKHelpers | null = null;
+let solverInstance: RobotIKSolver | null = null;
+let unsubscribeIkEnabled: (() => void) | null = null;
+let unsubscribeIkTarget: (() => void) | null = null;
+let ikModeEnabled = false;
+let isUpdatingFromControls = false;
 let _loading = true;
 let _loadingStatus = 'Initializing...';
 let error = '';
@@ -46,13 +50,74 @@ onMount(async () => {
 		scene.addObject(model.robot);
 
 		// Initialize IK solver
-		const solver = new RobotIKSolver(model.joints);
-		initializeIKHelpers(model.maxReach);
+		const solver = new RobotIKSolver(model, {
+			endEffector: 'endtip'
+		});
+
+		solverInstance = solver;
 
 		// Store in state
 		robot.setModel(model);
 		robot.setSolver(solver);
-		robot.setMaxReach(model.maxReach);
+		robot.setTarget(solver.target);
+
+		const effectorWorld = new Vector3();
+		solver.target.getWorldPosition(effectorWorld);
+		setIKTarget(effectorWorld.clone());
+
+		scene.configureIkTarget(solver.target, (worldPosition) => {
+			if (!solverInstance) {
+				return;
+			}
+
+			isUpdatingFromControls = true;
+			setIKTarget(worldPosition.clone());
+			if (ikModeEnabled) {
+				solverInstance.solve(worldPosition);
+			} else {
+				solverInstance.setTarget(worldPosition);
+			}
+			isUpdatingFromControls = false;
+		});
+		scene.setIkMode(ikModeEnabled);
+
+		unsubscribeIkEnabled = ikEnabled.subscribe((enabled) => {
+			ikModeEnabled = enabled;
+			scene?.setIkMode(enabled);
+
+			if (!solverInstance) {
+				return;
+			}
+
+			const worldPosition = new Vector3();
+			solverInstance.target.getWorldPosition(worldPosition);
+			scene?.updateIkHandlePosition(worldPosition);
+
+			if (enabled) {
+				solverInstance.solve(worldPosition);
+			} else {
+				solverInstance.setTarget(worldPosition);
+			}
+		});
+
+		unsubscribeIkTarget = ikTarget.subscribe((targetVector) => {
+			if (!scene || !solverInstance) {
+				return;
+			}
+
+			if (isUpdatingFromControls) {
+				return;
+			}
+
+			const worldPosition = targetVector.clone();
+			scene.updateIkHandlePosition(worldPosition);
+
+			if (ikModeEnabled) {
+				solverInstance.solve(worldPosition);
+			} else {
+				solverInstance.setTarget(worldPosition);
+			}
+		});
 
 		_loading = false;
 		logger.info('Robot loaded successfully from CDN', {
@@ -83,78 +148,13 @@ onMount(async () => {
 });
 
 onDestroy(() => {
+	unsubscribeIkEnabled?.();
+	unsubscribeIkTarget?.();
 	resizeObserver?.disconnect();
 	scene?.dispose();
-	if (ikHelpers && scene) {
-		ikHelpers.removeFromScene(scene.scene);
-		ikHelpers.dispose();
-	}
+	solverInstance?.dispose();
 	robot.reset();
 });
-
-function initializeIKHelpers(maxReach: number) {
-	if (!scene) {
-		return;
-	}
-
-	if (ikHelpers) {
-		ikHelpers.dispose();
-		ikHelpers = null;
-	}
-
-	ikHelpers = new IKHelpers(
-		scene.camera,
-		scene.renderer.domElement,
-		scene.controls,
-		{
-			initialPosition: new THREE.Vector3(
-				ROBOT_CONFIG.ik.targetInitialPosition.x,
-				ROBOT_CONFIG.ik.targetInitialPosition.y,
-				ROBOT_CONFIG.ik.targetInitialPosition.z
-			),
-			maxReach,
-			onTargetChange: handleIKTargetChange
-		}
-	);
-
-	ikHelpers.addToScene(scene.scene);
-	ikHelpers.setVisible(get(robot).isIKMode);
-}
-
-function handleIKTargetChange(position: THREE.Vector3) {
-	robot.setIKTargetPosition(position.clone());
-
-	const robotState = get(robot);
-	if (!robotState.solver) {
-		return;
-	}
-
-	const success = robotState.solver.solve(position.clone());
-	if (!success) {
-		logger.warn('IK solver failed to reach target', { position });
-		return;
-	}
-
-	const newAngles = {
-		base: robotState.solver.getJointAngle(ROBOT_CONFIG.jointNames.base),
-		arm1: robotState.solver.getJointAngle(ROBOT_CONFIG.jointNames.arm1),
-		arm2: robotState.solver.getJointAngle(ROBOT_CONFIG.jointNames.arm2)
-	};
-
-	joints.setAll(newAngles);
-}
-
-$: if (ikHelpers && scene) {
-	ikHelpers.setVisible($robot.isIKMode && $robot.isLoaded);
-}
-
-$: if (ikHelpers && $robot.maxReach) {
-	ikHelpers.setMaxReach($robot.maxReach);
-}
-
-$: if (ikHelpers && $robot.ikTargetPosition) {
-	ikHelpers.setTargetPosition(new THREE.Vector3().copy($robot.ikTargetPosition));
-}
 </script>
 
 <div class="canvas-container">

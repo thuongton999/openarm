@@ -236,7 +236,7 @@ uv run python scripts/upload_to_cdn.py      # Upload to CDN
 
 ## 📚 Documentation
 
-- [Technical Report](docs/summary.md) - Technical report
+- [Technical Report](docs/report[vi].tex) - Technical report
 - [CAD Processing](packages/cad/README.md) - Asset processing pipeline
 - [WebConnect](apps/webconnect/README.md) - Web application details
 

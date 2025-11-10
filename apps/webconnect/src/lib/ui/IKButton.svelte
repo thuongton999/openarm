@@ -1,32 +1,22 @@
 <script lang="ts">
-import { robot } from '@lib/state';
 import { Button, TooltipIcon } from 'carbon-components-svelte';
 import { Information } from 'carbon-icons-svelte';
-
-function toggleIK() {
-	robot.setIKMode(!$robot.isIKMode);
-}
+import { ikEnabled, toggleIK } from '@lib/state/ik';
 </script>
 
 <div class="ik-toggle">
-	<Button
-		kind={$robot.isIKMode ? 'danger' : 'secondary'}
-		disabled={!$robot.isLoaded}
-		size="field"
-		style="width: 100%;"
-		on:click={toggleIK}
-	>
-		{$robot.isIKMode ? 'Disable IK Mode' : 'Enable IK Mode'}
+	<Button kind={$ikEnabled ? 'danger' : 'secondary'} size="field" style="width: 100%;" on:click={toggleIK}>
+		{$ikEnabled ? 'Disable IK Mode' : 'Enable IK Mode'}
 	</Button>
 
 	<div class="ik-hint">
-	<TooltipIcon
-		align="start"
-		direction="right"
-		icon={Information}
-		tooltipText="Inverse Kinematics lets you drag the target in 3D. Joint sliders are disabled while active."
-	/>
-		<span>{$robot.isIKMode ? 'IK mode active' : 'IK mode ready'}</span>
+		<TooltipIcon
+			align="start"
+			direction="right"
+			icon={Information}
+			tooltipText="Toggle inverse kinematics to control the end effector by dragging the target in the scene."
+		/>
+		<span>{$ikEnabled ? 'IK mode is active' : 'IK mode is inactive'}</span>
 	</div>
 </div>
 
@@ -45,4 +35,3 @@ function toggleIK() {
 		color: var(--cds-text-secondary);
 	}
 </style>
- 

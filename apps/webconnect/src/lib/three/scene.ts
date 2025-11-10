@@ -1,7 +1,7 @@
 import { SCENE_CONFIG } from '@lib/config';
 import { logger } from '@lib/core';
 import * as THREE from 'three';
-import { OrbitControls } from 'three-stdlib';
+import { OrbitControls, TransformControls } from 'three-stdlib';
 
 export interface SceneConfig {
 	antialias?: boolean;
@@ -13,7 +13,18 @@ export class RobotScene {
 	public readonly camera: THREE.PerspectiveCamera;
 	public readonly renderer: THREE.WebGLRenderer;
 	public readonly controls: OrbitControls;
+	public readonly transformControls: TransformControls;
+
+	private readonly ikHelper: THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>;
+	private ikSource: THREE.Object3D | null = null;
+	private ikChangeCallback: ((position: THREE.Vector3) => void) | null = null;
+	private ikObjectChangeHandler: (() => void) | null = null;
+	private ikDraggingHandler: ((event: { value: boolean }) => void) | null = null;
 	private animationId: number | null = null;
+
+	private setTransformControlsEnabled(enabled: boolean): void {
+		(this.transformControls as unknown as { enabled: boolean }).enabled = enabled;
+	}
 
 	constructor(canvas: HTMLCanvasElement, config: SceneConfig = {}) {
 		// Scene
@@ -51,6 +62,23 @@ export class RobotScene {
 		this.controls.minDistance = controlsConfig.minDistance;
 		this.controls.maxDistance = controlsConfig.maxDistance;
 
+		this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
+		this.transformControls.visible = false;
+		this.transformControls.setSize(0.6);
+		this.scene.add(this.transformControls);
+
+		this.ikHelper = new THREE.Mesh(
+			new THREE.SphereGeometry(0.01, 24, 16),
+			new THREE.MeshStandardMaterial({
+				color: 0xff3366,
+				emissive: new THREE.Color(0xff3366),
+				emissiveIntensity: 0.5
+			})
+		);
+		this.ikHelper.visible = false;
+		this.ikHelper.name = 'ik-target-handle';
+		this.scene.add(this.ikHelper);
+
 		// Lights
 		this.setupLights();
 
@@ -59,6 +87,36 @@ export class RobotScene {
 		this.scene.add(gridHelper);
 
 		logger.info('Scene initialized');
+	}
+
+	configureIkTarget(target: THREE.Object3D, onChange: (position: THREE.Vector3) => void): void {
+		this.ikSource = target;
+		this.ikChangeCallback = onChange;
+
+		this.syncIkHandleToTarget();
+		this.ensureIkControlEvents();
+
+		this.transformControls.setMode('translate');
+		this.transformControls.setSpace('world');
+		this.setTransformControlsEnabled(true);
+		this.transformControls.attach(this.ikHelper);
+		this.transformControls.visible = true;
+		this.ikHelper.visible = true;
+	}
+
+	setIkMode(enabled: boolean): void {
+		this.setTransformControlsEnabled(enabled);
+		this.transformControls.visible = enabled;
+		this.ikHelper.visible = enabled;
+	}
+
+	updateIkHandlePosition(worldPosition: THREE.Vector3): void {
+		this.ikHelper.position.copy(worldPosition);
+		this.ikHelper.updateMatrixWorld(true);
+	}
+
+	getIkHandleWorldPosition(target = new THREE.Vector3()): THREE.Vector3 {
+		return this.ikHelper.getWorldPosition(target);
 	}
 
 	private setupLights(): void {
@@ -121,6 +179,20 @@ export class RobotScene {
 	dispose(): void {
 		this.stop();
 		this.controls.dispose();
+		if (this.ikObjectChangeHandler) {
+			(this.transformControls as any).removeEventListener('objectChange', this.ikObjectChangeHandler);
+			this.ikObjectChangeHandler = null;
+		}
+		if (this.ikDraggingHandler) {
+			(this.transformControls as any).removeEventListener('dragging-changed', this.ikDraggingHandler);
+			this.ikDraggingHandler = null;
+		}
+		this.transformControls.detach();
+		this.scene.remove(this.transformControls);
+		this.transformControls.dispose();
+		this.scene.remove(this.ikHelper);
+		this.ikHelper.geometry.dispose();
+		this.ikHelper.material.dispose();
 		this.renderer.dispose();
 		logger.info('Scene disposed');
 	}
@@ -131,5 +203,32 @@ export class RobotScene {
 
 	removeObject(object: THREE.Object3D): void {
 		this.scene.remove(object);
+	}
+
+	private syncIkHandleToTarget(): void {
+		if (!this.ikSource) {
+			return;
+		}
+
+		const worldPosition = new THREE.Vector3();
+		this.ikSource.getWorldPosition(worldPosition);
+		this.updateIkHandlePosition(worldPosition);
+	}
+
+	private ensureIkControlEvents(): void {
+		if (!this.ikObjectChangeHandler) {
+			this.ikObjectChangeHandler = () => {
+				const worldPos = this.getIkHandleWorldPosition();
+				this.ikChangeCallback?.(worldPos);
+			};
+			(this.transformControls as any).addEventListener('objectChange', this.ikObjectChangeHandler);
+		}
+
+		if (!this.ikDraggingHandler) {
+			this.ikDraggingHandler = (event: { value: boolean }) => {
+				this.controls.enabled = !event.value;
+			};
+			(this.transformControls as any).addEventListener('dragging-changed', this.ikDraggingHandler);
+		}
 	}
 }

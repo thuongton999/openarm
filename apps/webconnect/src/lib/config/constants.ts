@@ -49,10 +49,6 @@ export const ROBOT_CONFIG = {
 		base: { lower: 0, upper: Math.PI },
 		arm1: { lower: 0, upper: Math.PI },
 		arm2: { lower: 0, upper: Math.PI }
-	},
-	ik: {
-		targetInitialPosition: { x: 0.2, y: 0, z: 0.2 },
-		maxReach: 0.5 as number
 	}
 } as const;
 
